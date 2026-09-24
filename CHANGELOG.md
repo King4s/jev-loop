@@ -17,6 +17,33 @@ Nye udgivelser laves med `.\release.ps1`.
 ### Ændret
 - `AGENTS.md`: freja og macbook-pro findes ikke længere og er fjernet fra maskinlisten.
 
+## [2026.09.24.1541] - 2026-09-24
+
+### Ændret
+- README'ens overskrift og GitHub-beskrivelsen nævner begge harnesses (`Claude Code eller Hermes`).
+
+## [2026.09.24.1525] - 2026-09-24
+
+### Tilføjet
+- `AGENTS.md` beskriver Hermes-harnessen: værktøjsnavne (`mcp_jev_loop_*`), miljøfiltreringen og `${TYPESAFE_API_KEY}`, samt hvordan `hermes mcp add` opfører sig.
+
+## [2026.09.24.1457] - 2026-09-24
+
+### Tilføjet
+- Hermes-understøttelse i `install.sh`: skillen synces også til `~/.hermes/skills/jev-loop/`,
+  og serveren registreres med `hermes mcp add` (værktøjerne hedder `mcp_jev_loop_*`).
+  `TYPESAFE_API_KEY` gives kun videre gennem serverens `env`-blok når nøglen faktisk står i
+  `~/.hermes/.env` - en uopløst `${TYPESAFE_API_KEY}` ville ellers blive sendt til Jev som
+  selve nøglen. Ellers læser serveren nøglefilen selv.
+- `install.sh` springer Claude Code-delen over når `claude` ikke er på PATH (og omvendt for
+  Hermes), så installeren virker på en maskine med kun én af harnessene.
+
+### Ændret
+- `skill/jev-loop/SKILL.md` er nu harness-neutral: spørgsmål via `clarify` (Hermes) eller
+  `AskUserQuestion` (Claude Code), review via `delegate_task` eller `general-purpose`-agent,
+  og Hermes' værktøjsnavne nævnt eksplicit. Standardprojektmappen er ikke længere
+  Windows-specifik, og opsætningsafsnittet dækker begge harnesses og nøglefilen.
+
 ## [2026.09.24.1438] - 2026-09-24
 
 ### Ændret

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# One-time / update setup for Claude Code on Linux or macOS: creates a venv,
-# installs dependencies, copies the skill, registers the MCP server (user scope)
-# and runs a live self-check. Safe to run again after `git pull`.
+# One-time / update setup for Claude Code and Hermes on Linux, macOS or WSL: creates a
+# venv, installs dependencies, copies the skill, registers the MCP server and runs a live
+# self-check. Safe to run again after `git pull`.
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
+KEY_FILE="$HOME/.config/jev-loop/typesafe_api_key"
 
 if [ ! -x .venv/bin/python ] || ! .venv/bin/python -m pip --version >/dev/null 2>&1; then
   rm -rf .venv
@@ -20,15 +21,41 @@ fi
 .venv/bin/python -m pip install -q --upgrade pip
 .venv/bin/python -m pip install -q -r requirements.txt
 
-mkdir -p "$HOME/.claude/skills/jev-loop"
-cp skill/jev-loop/SKILL.md "$HOME/.claude/skills/jev-loop/SKILL.md"
-echo "Skill installed: $HOME/.claude/skills/jev-loop"
+if command -v claude >/dev/null 2>&1; then
+  mkdir -p "$HOME/.claude/skills/jev-loop"
+  cp skill/jev-loop/SKILL.md "$HOME/.claude/skills/jev-loop/SKILL.md"
+  echo "Skill installed: $HOME/.claude/skills/jev-loop"
 
-claude mcp remove jev-loop --scope user >/dev/null 2>&1 || true
-claude mcp add jev-loop --scope user -- "$ROOT/.venv/bin/python" "$ROOT/jev_mcp.py"
-echo "MCP server registered: jev-loop -> $ROOT/jev_mcp.py"
+  claude mcp remove jev-loop --scope user >/dev/null 2>&1 || true
+  claude mcp add jev-loop --scope user -- "$ROOT/.venv/bin/python" "$ROOT/jev_mcp.py"
+  echo "MCP server registered: jev-loop -> $ROOT/jev_mcp.py"
+else
+  echo "claude not on PATH - skipping Claude Code setup."
+fi
 
-KEY_FILE="$HOME/.config/jev-loop/typesafe_api_key"
+# Hermes: same server, same loop; the tools show up as mcp_jev_loop_*.
+if command -v hermes >/dev/null 2>&1; then
+  HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+  mkdir -p "$HERMES_HOME/skills/jev-loop"
+  cp skill/jev-loop/SKILL.md "$HERMES_HOME/skills/jev-loop/SKILL.md"
+  echo "Skill installed: $HERMES_HOME/skills/jev-loop"
+
+  # A Hermes stdio MCP subprocess gets a filtered environment, so the key is handed over in
+  # the server's env block - but ONLY when Hermes can resolve it: an unresolved
+  # ${TYPESAFE_API_KEY} would reach Jev as the key itself instead of falling back to the key
+  # file. Without the env block the server reads $KEY_FILE on its own.
+  env_args=()
+  if grep -q '^TYPESAFE_API_KEY=.' "$HERMES_HOME/.env" 2>/dev/null; then
+    env_args=(--env 'TYPESAFE_API_KEY=${TYPESAFE_API_KEY}')
+  fi
+  hermes mcp remove jev-loop >/dev/null 2>&1 || true
+  printf 'y\n' | hermes mcp add jev-loop --command "$ROOT/.venv/bin/python" \
+    ${env_args[@]+"${env_args[@]}"} --args "$ROOT/jev_mcp.py"
+  echo "MCP server registered: jev-loop -> $ROOT/jev_mcp.py (start a new Hermes session)"
+else
+  echo "hermes not on PATH - skipping Hermes setup."
+fi
+
 if [ -z "${TYPESAFE_API_KEY:-}" ] && [ ! -s "$KEY_FILE" ]; then
   echo "WARNING: no TypeSafe key. Put it in $KEY_FILE (chmod 600) or export TYPESAFE_API_KEY." >&2
   exit 0

@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/King4s/jev-loop/actions/workflows/test.yml/badge.svg)](https://github.com/King4s/jev-loop/actions/workflows/test.yml)
 
-En byggeloop, hvor **Jev beslutter** og **Claude Code udfører**.
+En byggeloop, hvor **Jev beslutter** og **Claude Code eller Hermes udfører**.
 
 [Jev](https://docs.typesafe.ai) (TypeSafe) er en hurtig beslutningsmodel, der svarer med
 typede valg og sandsynligheder i stedet for tekst. I jev-loop afgør Jev for hver tur:
@@ -11,12 +11,13 @@ typede valg og sandsynligheder i stedet for tekst. I jev-loop afgør Jev for hve
 - **done**: sandsynligheden for, at målet er nået
 - **recovery**: efter en fejl, om vi skal prøve igen, skifte rolle eller give op
 
-Claude Code skriver koden. Serveren kører dine checks. En uafhængig subagent
+Claude Code (eller Hermes) skriver koden. Serveren kører dine checks. En uafhængig subagent
 reviewer, og **kun reviewet kan erklære opgaven færdig**.
 
 ## Kom i gang
 
-Kræver Python 3.11+, [Claude Code](https://claude.com/claude-code) og en
+Kræver Python 3.11+, [Claude Code](https://claude.com/claude-code) eller
+[Hermes](https://hermes-agent.nousresearch.com) og en
 [TypeSafe API-nøgle](https://docs.typesafe.ai), enten i miljøvariablen `TYPESAFE_API_KEY`
 eller i filen `~/.config/jev-loop/typesafe_api_key` (kun læsbar for dig).
 
@@ -26,19 +27,23 @@ git clone https://github.com/King4s/jev-loop.git; cd jev-loop; .\install.ps1
 ```
 
 ```bash
-# Linux / macOS (laver et venv i repoet)
+# Linux / macOS / WSL (laver et venv i repoet)
 git clone https://github.com/King4s/jev-loop.git ~/jev-loop && ~/jev-loop/install.sh
 ```
 
-Installeren slutter med `jev_mcp.py --check`, et lille live-kald til Jev, der viser at
-afhængigheder, nøgle og netværk virker. Opdatering: `git pull` og kør installeren igen.
+`install.sh` sætter begge harnesses op hvis de findes: skillen synces til
+`~/.claude/skills/jev-loop/` og `~/.hermes/skills/jev-loop/`, og serveren registreres med
+`claude mcp add` og `hermes mcp add`. Installeren slutter med `jev_mcp.py --check`, et lille
+live-kald til Jev, der viser at afhængigheder, nøgle og netværk virker. Opdatering:
+`git pull` og kør installeren igen.
 
-Genstart Claude Code, og sig så bare hvad du vil have bygget:
+I Hermes hedder værktøjerne `mcp_jev_loop_loop_start` osv.; start en ny session bagefter.
+Ellers genstart Claude Code, og sig så bare hvad du vil have bygget:
 
 > byg med jev: et lille værktøj der omdøber mine fotos efter optagelsesdato
 
-eller skriv `/jev-loop`. Skillen stiller få konkrete spørgsmål (mappe, sprog, hvordan
-det testes, størrelse), skriver acceptkriterierne og `goal.json` for dig, viser et
+eller skriv `/jev-loop` (Claude Code). Skillen stiller få konkrete spørgsmål (mappe, sprog,
+hvordan det testes, størrelse), skriver acceptkriterierne og `goal.json` for dig, viser et
 resumé og kører loopen, når du siger go.
 
 ## Sådan kører en tur
