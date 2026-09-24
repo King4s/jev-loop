@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1956] - 2026-09-24
+
 ### Tilføjet
 - Codex-understøttelse: `install.sh` og `install.ps1` installerer skillen til
   `~/.agents/skills/jev-loop/` (Codex' bruger-scope for skills, inkl. `agents/openai.yaml`)
