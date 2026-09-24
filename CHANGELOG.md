@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1541] - 2026-09-24
+
 ### Ændret
 - README'ens overskrift og GitHub-beskrivelsen nævner begge harnesses (`Claude Code eller Hermes`).
 
