@@ -33,8 +33,8 @@ else
   echo "claude not on PATH - skipping Claude Code setup."
 fi
 
-# Codex: skillen læses fra ~/.agents/skills (den delte agent-skills-placering), og
-# serveren registreres i ~/.codex/config.toml.
+# Codex: the skill is read from ~/.agents/skills (the shared agent-skills location), and
+# the server is registered in ~/.codex/config.toml.
 if command -v codex >/dev/null 2>&1; then
   mkdir -p "$HOME/.agents/skills/jev-loop"
   cp -R skill/jev-loop/. "$HOME/.agents/skills/jev-loop/"

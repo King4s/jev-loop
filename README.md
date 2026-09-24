@@ -2,25 +2,25 @@
 
 [![tests](https://github.com/King4s/jev-loop/actions/workflows/test.yml/badge.svg)](https://github.com/King4s/jev-loop/actions/workflows/test.yml)
 
-En byggeloop, hvor **Jev beslutter** og **Claude Code, Codex eller Hermes udfører**.
+A build loop where **Jev decides** and **Claude Code, Codex or Hermes does the work**.
 
-[Jev](https://docs.typesafe.ai) (TypeSafe) er en hurtig beslutningsmodel, der svarer med
-typede valg og sandsynligheder i stedet for tekst. I jev-loop afgør Jev for hver tur:
+[Jev](https://docs.typesafe.ai) (TypeSafe) is a fast decision model that answers with
+typed choices and probabilities instead of text. In jev-loop, Jev decides on every turn:
 
-- **route**: hvilken rolle arbejder nu (`build`, `test`, `fix`, ...)
-- **done**: sandsynligheden for, at målet er nået
-- **recovery**: efter en fejl, om vi skal prøve igen, skifte rolle eller give op
+- **route**: which role works next (`build`, `test`, `fix`, ...)
+- **done**: the probability that the goal is met
+- **recovery**: after a failure, whether to retry, switch role or give up
 
-Claude Code, Codex eller Hermes skriver koden. Serveren kører dine checks. En uafhængig
-subagent reviewer, og **kun reviewet kan erklære opgaven færdig**.
+Claude Code, Codex or Hermes writes the code. The server runs your checks. An independent
+subagent reviews the work, and **only the review can declare the task done**.
 
-## Kom i gang
+## Getting started
 
-Kræver Python 3.11+, et harness - [Claude Code](https://claude.com/claude-code),
-[Codex](https://developers.openai.com/codex) eller
-[Hermes](https://hermes-agent.nousresearch.com) - og en
-[TypeSafe API-nøgle](https://docs.typesafe.ai), enten i miljøvariablen `TYPESAFE_API_KEY`
-eller i filen `~/.config/jev-loop/typesafe_api_key` (kun læsbar for dig).
+Requires Python 3.11+, a harness - [Claude Code](https://claude.com/claude-code),
+[Codex](https://developers.openai.com/codex) or
+[Hermes](https://hermes-agent.nousresearch.com) - and a
+[TypeSafe API key](https://docs.typesafe.ai), either in the `TYPESAFE_API_KEY` environment
+variable or in the file `~/.config/jev-loop/typesafe_api_key` (readable only by you).
 
 ```powershell
 # Windows
@@ -28,122 +28,122 @@ git clone https://github.com/King4s/jev-loop.git; cd jev-loop; .\install.ps1
 ```
 
 ```bash
-# Linux / macOS / WSL (laver et venv i repoet)
+# Linux / macOS / WSL (creates a venv inside the repo)
 git clone https://github.com/King4s/jev-loop.git ~/jev-loop && ~/jev-loop/install.sh
 ```
 
-Installerne sætter alle harnesses op de finder på PATH:
+The installers set up every harness they find on PATH:
 
-| Harness | Skill | MCP-server |
+| Harness | Skill | MCP server |
 | --- | --- | --- |
 | Claude Code | `~/.claude/skills/jev-loop/` | `claude mcp add` |
 | Codex | `~/.agents/skills/jev-loop/` | `codex mcp add` (`~/.codex/config.toml`) |
 | Hermes | `~/.hermes/skills/jev-loop/` | `hermes mcp add` |
 
-Installeren slutter med `jev_mcp.py --check`, et lille live-kald til Jev, der viser at
-afhængigheder, nøgle og netværk virker. Opdatering: `git pull` og kør installeren igen.
+The installer finishes with `jev_mcp.py --check`, a tiny live call to Jev that shows
+dependencies, key and network work. To update: `git pull` and run the installer again.
 
-I Hermes hedder værktøjerne `mcp_jev_loop_loop_start` osv.; start en ny session bagefter.
-I Claude Code og Codex kommer værktøjerne fra `jev-loop`-serveren som `loop_start` osv.
-Genstart harnessen, og sig så bare hvad du vil have bygget:
+In Hermes the tools are called `mcp_jev_loop_loop_start` etc.; start a new session afterwards.
+In Claude Code and Codex the tools come from the `jev-loop` server as `loop_start` etc.
+Restart the harness, then just say what you want built:
 
-> byg med jev: et lille værktøj der omdøber mine fotos efter optagelsesdato
+> build with jev: a small tool that renames my photos by capture date
 
-eller påkald skillen direkte: `/jev-loop` (Claude Code), `$jev-loop` eller `/skills`
-(Codex). Skillen stiller få konkrete spørgsmål (mappe, sprog, hvordan det testes,
-størrelse), skriver acceptkriterierne og `goal.json` for dig, viser et resumé og kører
-loopen, når du siger go.
+or invoke the skill directly: `/jev-loop` (Claude Code), `$jev-loop` or `/skills`
+(Codex). The skill asks a few concrete questions (folder, language, how to test it,
+size), writes the acceptance criteria and `goal.json` for you, shows a summary and runs
+the loop when you say go.
 
-## Sådan kører en tur
+## How a turn runs
 
 ```
-loop_decide ──► execute ──► loop_record_turn ──► (checks køres) ──┐
+loop_decide ──► execute ──► loop_record_turn ──► (checks run) ────┐
      ▲             │                                              │
-     │             └──(Jev: checks OK og p_done ≥ tærskel)──► review ──► loop_record_review
+     │             └──(Jev: checks OK and p_done ≥ threshold)─► review ──► loop_record_review
      └────────────────────────────────────────────────────────────┘          │
                                                                     done ──► stop
 ```
 
-Hårde stop: `max_turns`, `max_consecutive_failures`, eller Jev vælger `escalate`.
-En tur er en fejl, hvis executoren melder fejl, en tidligere grøn check går i stykker, eller
-intet flytter sig (ingen filer, samme fejl-output). En check, der blot endnu er rød, er ikke nok.
-Går loopen i stå - samme rolle, alle checks grønne og uændret output i `stall_turns` ture
-i træk - får Jev det at vide (`stalled`) og et ekstra spørgsmål: kan mere executor-arbejde
-ændre noget, eller skal en uafhængig reviewer dømme nu? Svarer Jev ja (≥ `jev_review_threshold`),
-går loopen til review, selv om `p_done` er under tærsklen. Koden beslutter intet; reviewet
-afgør stadig, om målet er nået.
-Alt logges i `runs/<id>.jsonl` (beslutningstapen, inkl. Jevs rå svar), og tilstanden i
-`runs/<id>.state.json`, så en kørsel kan genoptages.
+Hard stops: `max_turns`, `max_consecutive_failures`, or Jev chooses `escalate`.
+A turn fails when the executor reports failure, a previously green check breaks, or
+nothing moves (no files, same failure output). A check that is simply still red is not enough.
+If the loop stalls - same role, all checks green and unchanged output for `stall_turns`
+turns in a row - Jev is told so (`stalled`) and asked an extra question: can more executor
+work change anything, or should an independent reviewer judge now? If Jev says yes
+(≥ `jev_review_threshold`), the loop goes to review even though `p_done` is below the
+threshold. The code decides nothing; the review still decides whether the goal is met.
+Everything is logged in `runs/<id>.jsonl` (the decision tape, including Jev's raw answers),
+and the state in `runs/<id>.state.json`, so a run can be resumed.
 
-Hvad Jev ser: mål, acceptkriterier, projektets filliste, check-resultater, de seneste ture
-og det sidste reviews mangler *sammen med turene siden*. Rå agent-output sendes ikke med;
-Jev er svag over for støj.
+What Jev sees: goal, acceptance criteria, the project's file list, check results, the latest
+turns, and the last review's missing items *together with the turns since*. Raw agent output
+is not sent; Jev is weak against noise.
 
 ## goal.json
 
-Skillen skriver den for dig, men formatet er enkelt (se [goal.example.json](goal.example.json)):
+The skill writes it for you, but the format is simple (see [goal.example.json](goal.example.json)):
 
-| Felt | Betydning |
+| Field | Meaning |
 | --- | --- |
-| `goal` | Målet i én sætning |
-| `acceptance` | Liste af konkrete, tjekbare kriterier |
-| `checks` | Shell-kommandoer i `workdir`; exit 0 = bestået. Jo flere deterministiske checks, jo ærligere loop |
-| `workdir` | Projektmappen, relativt til goal-filen |
-| `roles` | `when` = Jevs routing-kriterium, `brief` = instruks til executoren |
-| `jev_model` | Standard `jev-latest` |
-| `jev_done_threshold` | Hvornår Jev må sende til review (standard 0.8) |
-| `stall_turns` | Antal uændrede grønne ture med samme rolle, før Jev spørges om review (standard 2) |
-| `jev_review_threshold` | Hvornår Jevs svar på det spørgsmål sender til review (standard 0.5) |
-| `max_turns`, `max_consecutive_failures`, `check_timeout` | Hårde grænser |
+| `goal` | The goal in one sentence |
+| `acceptance` | List of concrete, checkable criteria |
+| `checks` | Shell commands run in `workdir`; exit 0 = pass. The more deterministic checks, the more honest the loop |
+| `workdir` | The project folder, relative to the goal file |
+| `roles` | `when` = Jev's routing criterion, `brief` = instructions for the executor |
+| `jev_model` | Default `jev-latest` |
+| `jev_done_threshold` | When Jev may send the run to review (default 0.8) |
+| `stall_turns` | Unchanged green turns with the same role before Jev is asked about review (default 2) |
+| `jev_review_threshold` | When Jev's answer to that question sends the run to review (default 0.5) |
+| `max_turns`, `max_consecutive_failures`, `check_timeout` | Hard limits |
 
-## MCP-værktøjer
+## MCP tools
 
-| Værktøj | Gør |
+| Tool | Does |
 | --- | --- |
-| `loop_start(goal_path)` | Opretter en kørsel, kører checks én gang |
-| `loop_decide(run_id)` | Spørger Jev; svarer `execute`, `review` eller `stop` |
-| `loop_record_turn(run_id, notes, files, executor_ok)` | Registrerer turen og kører checks |
-| `loop_record_review(run_id, done, missing)` | Registrerer reviewerens dom |
-| `loop_status(run_id)` | Viser fase, historik og tape |
+| `loop_start(goal_path)` | Creates a run, runs the checks once |
+| `loop_decide(run_id)` | Asks Jev; answers `execute`, `review` or `stop` |
+| `loop_record_turn(run_id, notes, files, executor_ok)` | Records the turn and runs the checks |
+| `loop_record_review(run_id, done, missing)` | Records the reviewer's verdict |
+| `loop_status(run_id)` | Shows phase, history and tape |
 
-## Selvstændigt script: loop.py
+## Standalone script: loop.py
 
-`loop.py` er den oprindelige variant uden et harness: executor og reviewer er modeller
-via OpenRouter. Kræver `OPENROUTER_API_KEY` og `TYPESAFE_API_KEY`.
+`loop.py` is the original variant without a harness: executor and reviewer are models
+via OpenRouter. Requires `OPENROUTER_API_KEY` and `TYPESAFE_API_KEY`.
 
 ```powershell
 copy goal.example.json goal.json
 python loop.py goal.json
 ```
 
-Exit-koder: 0 = færdig, 1 = max_turns, 2 = kræver et menneske.
-Bemærk: MCP-varianten er den vedligeholdte; `loop.py` sender endnu ikke fillisten eller
-review-fremskridt til Jev.
+Exit codes: 0 = done, 1 = max_turns, 2 = needs a human.
+Note: the MCP variant is the maintained one; `loop.py` does not yet send the file list or
+review progress to Jev.
 
-## Udvikling
+## Development
 
-Repoet vedligeholdes af AI-agenter; reglerne står i [AGENTS.md](AGENTS.md).
+The repo is maintained by AI agents; the rules are in [AGENTS.md](AGENTS.md).
 
 ```powershell
 pip install -r requirements.txt
-python -m pytest -q tests     # protokoltests med mocket Jev, ingen netværk
+python -m pytest -q tests     # protocol tests with Jev mocked, no network
 ```
 
-Versioner er datobaserede, `yyyy.mm.dd.ttmm`. Ny udgivelse (kræver ren working tree):
+Versions are date-based, `yyyy.mm.dd.hhmm`. New release (requires a clean working tree):
 
 ```powershell
 .\release.ps1
 ```
 
-Scriptet sætter `VERSION`, flytter `[Unreleased]` i [CHANGELOG.md](CHANGELOG.md) under den
-nye version, committer, tagger `v<version>`, pusher og laver en GitHub-release.
+The script sets `VERSION`, moves `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) under the
+new version, commits, tags `v<version>`, pushes and creates a GitHub release.
 
-## Sikkerhed
+## Security
 
-`checks` kører kommandoer i en shell på din maskine, og koden de tester er skrevet af en
-model. Kør ukendte mål i en VM eller container. API-nøglen læses kun fra miljøet og
-gemmes aldrig i repoet eller i tapen.
+`checks` runs commands in a shell on your machine, and the code they test was written by a
+model. Run unknown goals in a VM or container. The API key is read only from the environment
+or the key file and is never stored in the repo or in the tape.
 
-## Licens
+## License
 
 [MIT](LICENSE)

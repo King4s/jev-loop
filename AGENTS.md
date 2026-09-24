@@ -60,8 +60,9 @@ copy; Hermes reads its own clone in `/home/hermes/jev-loop`.
    and/or `.\install.ps1` (both are safe to re-run; each syncs the skill and registers the
    server). The copies live in `~/.claude/skills/jev-loop/`, `~/.agents/skills/jev-loop/`
    and `~/.hermes/skills/jev-loop/`.
-4. Add a line under `## [Unreleased]` in `CHANGELOG.md` (Danish, sections
-   `Tilføjet` / `Ændret` / `Rettet`).
+4. Add a line under `## [Unreleased]` in `CHANGELOG.md` (English, sections
+   `Added` / `Changed` / `Fixed`). Everything in the repo and on GitHub (docs, changelog,
+   release notes, comments, commit messages) is in English; only replies to the owner are Danish.
 5. Commit with a clear message ending in the agent's `Co-Authored-By` line.
 
 ## Releasing

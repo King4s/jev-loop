@@ -20,16 +20,16 @@ If *what to build* is completely missing, ask that first in plain chat.
 
 What you need, and good defaults:
 
-1. **Hvad skal bygges** - one sentence goal. Rewrite vague wishes into a concrete, testable goal.
-2. **Hvor** - project folder. Default: a new folder for this project next to where the user
-   keeps projects (Windows: `F:\AI-Projekter\<kort-navn>`; otherwise the current working
+1. **What to build** - one sentence goal. Rewrite vague wishes into a concrete, testable goal.
+2. **Where** - project folder. Default: a new folder for this project next to where the user
+   keeps projects (Windows: `F:\AI-Projekter\<short-name>`; otherwise the current working
    directory). If the folder already has code, the loop continues from it.
-3. **Sprog / stack** - infer from the goal or existing files; ask only if unclear
+3. **Language / stack** - infer from the goal or existing files; ask only if unclear
    (e.g. Python / Node-TypeScript / other).
-4. **Hvordan ved vi, at det virker** - this decides the `checks`. Propose them:
+4. **How we know it works** - this decides the `checks`. Propose them:
    Python -> `python -m pytest -q`; Node -> `npm test`; plus a build/lint/type-check
    when the stack has one. Deterministic checks are what keep the loop honest.
-5. **Størrelse** - small (`max_turns` 10) / medium (20, default) / large (40).
+5. **Size** - small (`max_turns` 10) / medium (20, default) / large (40).
 
 Then **draft 3-6 acceptance criteria yourself**: concrete, checkable, including one
 for error handling and one saying tests cover the criteria. Don't ask the user to write them.
@@ -64,7 +64,7 @@ Adapt roles only if the task clearly needs it (e.g. a `docs` or `ui` role, each 
 clear `when`). `workdir` "." = the project folder itself.
 
 Show the user a short summary (goal, criteria as bullets, checks, folder, size) and ask
-for a go with the same question tool ("Kør" / "Ret noget"). Apply corrections, then start.
+for a go with the same question tool ("Go" / "Change something", in the user's language). Apply corrections, then start.
 If the user said to just go, skip the confirmation.
 
 If a `goal.json` already exists in the folder, ask whether to reuse it, continue an
