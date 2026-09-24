@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1425] - 2026-09-24
+
 ### Tilføjet
 - `AGENTS.md` (+ `CLAUDE.md`): instrukser til AI-vedligeholdere - repoet vedligeholdes af AI, ikke af et menneske.
 
