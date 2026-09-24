@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1435] - 2026-09-24
+
 ### Tilføjet
 - `install.sh` til Linux/macOS (venv, skill, MCP-registrering, live-tjek).
 - `jev_mcp.py --check`: lille live-kald til Jev som sundhedstjek; installerne kører det til sidst.
