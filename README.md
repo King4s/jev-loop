@@ -91,6 +91,8 @@ review-fremskridt til Jev.
 
 ## Udvikling
 
+Repoet vedligeholdes af AI-agenter; reglerne står i [AGENTS.md](AGENTS.md).
+
 ```powershell
 pip install -r requirements.txt
 python -m pytest -q tests     # protokoltests med mocket Jev, ingen netværk

@@ -5,6 +5,12 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Tilføjet
+- `AGENTS.md` (+ `CLAUDE.md`): instrukser til AI-vedligeholdere - repoet vedligeholdes af AI, ikke af et menneske.
+
+### Ændret
+- `release.ps1` afviser en udgivelse med tom `[Unreleased]`-sektion.
+
 ## [2026.09.24.1422] - 2026-09-24
 
 Første udgivelse.
