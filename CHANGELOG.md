@@ -5,6 +5,25 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Tilføjet
+- Codex-understøttelse: `install.sh` og `install.ps1` installerer skillen til
+  `~/.agents/skills/jev-loop/` (Codex' bruger-scope for skills, inkl. `agents/openai.yaml`)
+  og registrerer serveren med `codex mcp add jev-loop -- <python> jev_mcp.py`
+  (`~/.codex/config.toml`). Codex-delen springes over uden fejl, når `codex` ikke er på PATH.
+- `tests/test_skill.py`: frontmatteren i `skill/jev-loop/SKILL.md` holdes inden for Codex'
+  grænser (`name` <= 100, `description` <= 500 tegn), ellers springer Codex skillen over.
+- `tests/test_install_sh.py`: kører den rigtige `install.sh` i en sandkasse og kræver at
+  Codex-skillen lander i `~/.agents/skills/jev-loop/` og at serveren registreres med
+  `codex mcp add` - samt at en manglende `codex` blot springes over.
+
+### Ændret
+- `skill/jev-loop/SKILL.md` dækker nu tre harnesses: spørgsmål via `clarify` (Hermes),
+  `AskUserQuestion` (Claude Code) eller almindelig chat (Codex), review via `delegate_task`,
+  `general-purpose`-agenten eller en frisk `codex exec -s read-only`-proces, og
+  opsætningsafsnittet viser skill- og MCP-placeringen pr. harness.
+- `README.md`, `AGENTS.md` og `jev_mcp.py`s docstring er harness-neutrale: Claude Code,
+  Codex eller Hermes er executoren.
+
 ## [2026.09.24.1457] - 2026-09-24
 
 ### Tilføjet

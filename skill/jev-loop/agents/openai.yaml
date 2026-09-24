@@ -1,0 +1,12 @@
+interface:
+  display_name: "jev-loop"
+  short_description: "Jev decides, the harness builds, a subagent reviews - decision-driven build loop"
+  default_prompt: "byg med jev: "
+policy:
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "jev-loop"
+      description: "jev-loop MCP server: loop_start, loop_decide, loop_record_turn, loop_record_review, loop_status"
+      transport: "stdio"

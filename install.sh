@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time / update setup for Claude Code and Hermes on Linux, macOS or WSL: creates a
+# One-time / update setup for Claude Code, Codex and Hermes on Linux, macOS or WSL: creates a
 # venv, installs dependencies, copies the skill, registers the MCP server and runs a live
 # self-check. Safe to run again after `git pull`.
 set -euo pipefail
@@ -31,6 +31,20 @@ if command -v claude >/dev/null 2>&1; then
   echo "MCP server registered: jev-loop -> $ROOT/jev_mcp.py"
 else
   echo "claude not on PATH - skipping Claude Code setup."
+fi
+
+# Codex: skillen læses fra ~/.agents/skills (den delte agent-skills-placering), og
+# serveren registreres i ~/.codex/config.toml.
+if command -v codex >/dev/null 2>&1; then
+  mkdir -p "$HOME/.agents/skills/jev-loop"
+  cp -R skill/jev-loop/. "$HOME/.agents/skills/jev-loop/"
+  echo "Skill installed: $HOME/.agents/skills/jev-loop"
+
+  codex mcp remove jev-loop >/dev/null 2>&1 || true
+  codex mcp add jev-loop -- "$ROOT/.venv/bin/python" "$ROOT/jev_mcp.py"
+  echo "MCP server registered: jev-loop -> $ROOT/jev_mcp.py (restart Codex)"
+else
+  echo "codex not on PATH - skipping Codex setup."
 fi
 
 # Hermes: same server, same loop; the tools show up as mcp_jev_loop_*.

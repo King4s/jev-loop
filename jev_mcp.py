@@ -1,8 +1,8 @@
-"""jev-loop as an MCP server: Jev decides, Claude Code does the work.
+"""jev-loop as an MCP server: Jev decides, the harness (Claude Code / Codex / Hermes) does the work.
 
 The server owns the parts that must not depend on the executor's judgement:
 Jev's decisions (route / done / recovery), running the checks, the hard stops
-and the decision tape. The client (Claude Code, driven by the jev-loop skill)
+and the decision tape. The client harness (driven by the jev-loop skill)
 writes the code and runs the review.
 
 Protocol per turn:

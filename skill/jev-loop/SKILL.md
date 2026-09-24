@@ -1,6 +1,6 @@
 ---
 name: jev-loop
-description: Build something with the Jev-driven build loop - interview the user, write the goal file for them, then run it (TypeSafe's Jev decides which role works next and when to stop; Claude Code or Hermes does the work; a subagent reviews). Use when the user says "jev", "jev-loop", "kør loopen", "byg ... med jev", "lad Jev styre", or invokes /jev-loop - with or without a goal file or path. The user never has to remember paths or the goal format.
+description: Build something with the Jev-driven build loop - interview the user, write the goal file for them, then run it (TypeSafe's Jev decides which role works next and when to stop; Claude Code, Codex or Hermes does the work; a subagent reviews). Use when the user says "jev", "jev-loop", "kør loopen", "byg ... med jev", "lad Jev styre", or invokes /jev-loop - with or without a goal file or path. The user never has to remember paths or the goal format.
 ---
 
 # jev-loop
@@ -14,7 +14,8 @@ Talk to the user in their language (usually Danish).
 Pull everything you can from the user's message and the current directory first.
 Then ask only what is still unknown, in ONE structured question call (max 4-5 questions,
 concrete options with a recommended default first; the user can always pick "Other").
-Use `clarify` in Hermes, `AskUserQuestion` in Claude Code.
+Use `clarify` in Hermes, `AskUserQuestion` in Claude Code; in Codex, ask in plain chat
+(it has no question tool by default) and keep it to one short list of questions.
 If *what to build* is completely missing, ask that first in plain chat.
 
 What you need, and good defaults:
@@ -74,7 +75,9 @@ unfinished run (`loop_status`), or write a new one.
 Jev (via the `jev-loop` MCP server) is the decider; you are the executor. Never decide
 routing, "done" or giving up yourself - the server does, and it runs the checks.
 In Hermes the tools are named `mcp_jev_loop_loop_start`, `mcp_jev_loop_loop_decide`,
-`mcp_jev_loop_loop_record_turn`, `mcp_jev_loop_loop_record_review`, `mcp_jev_loop_loop_status`.
+`mcp_jev_loop_loop_record_turn`, `mcp_jev_loop_loop_record_review`, `mcp_jev_loop_loop_status`;
+in Claude Code and Codex they come from the `jev-loop` MCP server as `loop_start`,
+`loop_decide`, `loop_record_turn`, `loop_record_review` and `loop_status`.
 
 1. `loop_start(goal_path)` -> `run_id`.
 2. `loop_decide(run_id)` and act on `next`:
@@ -84,11 +87,15 @@ In Hermes the tools are named `mcp_jev_loop_loop_start`, `mcp_jev_loop_loop_deci
      `loop_record_turn(run_id, notes, files, executor_ok)` - `notes` is 1-2 honest
      sentences, `files` relative to `workdir`, `executor_ok=false` if you could not do
      the step. Don't run the configured checks yourself; the server does.
-   - **`review`**: spawn an independent subagent (`delegate_task` in Hermes; the
-     `general-purpose` Task agent in Claude Code) in its own context (it must not see your
-     reasoning). Give it the goal, acceptance criteria, workdir and check results; it
-     reads the files (no edits) and answers strictly - passing checks are necessary, not
-     sufficient - with `{"done": bool, "missing": [...]}`. Pass the verdict unchanged to
+   - **`review`**: get an independent review in a context that cannot see your reasoning:
+     `delegate_task` in Hermes, the `general-purpose` Task agent in Claude Code, or a
+     fresh read-only process in Codex:
+     `codex exec -s read-only -C <workdir> -o verdict.json "<review prompt>"` - a new
+     process with no shared context, which cannot edit files; the verdict lands in
+     `verdict.json` so it can be passed on unchanged. Give it the goal, acceptance
+     criteria, workdir and check results; it reads the files (no edits) and answers
+     strictly - passing checks are necessary, not sufficient - with
+     `{"done": bool, "missing": [...]}`. Pass the verdict unchanged to
      `loop_record_review`, then follow that response's `next`.
    - **`stop`**: report `reason` (`goal_met` / `max_turns` / `escalate`), turns used,
      where the result is, and how to run it. On `escalate`, summarise what keeps failing.
@@ -102,9 +109,16 @@ picks up the new MCP server (setup below).
 
 From a clone of https://github.com/King4s/jev-loop run `./install.sh` (Linux, macOS, WSL)
 or `.\install.ps1` (Windows). Both install dependencies, sync this skill and register the
-`jev-loop` MCP server - `install.sh` covers both harnesses: Claude Code
-(`~/.claude/skills/jev-loop/`) and Hermes (`~/.hermes/skills/jev-loop/` + `hermes mcp add`).
-Then restart the harness / start a new session.
+`jev-loop` MCP server for every harness they find on PATH:
+
+| Harness | Skill | MCP |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills/jev-loop/` | `claude mcp add` |
+| Codex | `~/.agents/skills/jev-loop/` | `codex mcp add` (`~/.codex/config.toml`) |
+| Hermes | `~/.hermes/skills/jev-loop/` | `hermes mcp add` |
+
+Then restart the harness / start a new session. In Codex, the skill is invoked with
+`/skills` or `$jev-loop` (and it also triggers on the description).
 
 The TypeSafe key goes in the environment as `TYPESAFE_API_KEY` or in
 `~/.config/jev-loop/typesafe_api_key` (mode 600); the server reads both. In Hermes the key

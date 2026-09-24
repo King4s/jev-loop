@@ -10,9 +10,11 @@ and answer them in Danish.
 
 - `jev_mcp.py` - MCP server (`jev-loop`). Jev (TypeSafe, `api.typesafe.ai/v1/systemone`)
   decides route / done / recovery; the server runs checks, hard stops and the tape.
-  Claude Code is the executor. Run state: `runs/<id>.state.json`, tape: `runs/<id>.jsonl`.
-- `skill/jev-loop/SKILL.md` - the Claude Code skill (interview -> goal.json -> loop).
-  The installed copy lives in `~/.claude/skills/jev-loop/`; `install.ps1` syncs it.
+  The client harness (Claude Code / Codex / Hermes) is the executor. Run state:
+  `runs/<id>.state.json`, tape: `runs/<id>.jsonl`.
+- `skill/jev-loop/SKILL.md` - the harness-neutral skill (interview -> goal.json -> loop).
+  Installed copies: `~/.claude/skills/jev-loop/` (Claude Code), `~/.agents/skills/jev-loop/`
+  (Codex), `~/.hermes/skills/jev-loop/` (Hermes); the installers sync them.
 - `loop.py` - older standalone variant (executor/reviewer via OpenRouter). Secondary.
 - `tests/test_jev_mcp.py` - protocol tests with Jev mocked. No network, no key needed.
 
@@ -35,8 +37,9 @@ Health check anywhere: `python jev_mcp.py --check`.
 
 1. Make the change. Keep `jev_mcp.py` the source of truth for loop behaviour.
 2. `python -m pytest -q tests` must pass. Add a test for new protocol behaviour.
-3. If you changed `skill/jev-loop/SKILL.md`, also copy it to
-   `~/.claude/skills/jev-loop/SKILL.md` (or run `.\install.ps1`).
+3. If you changed `skill/jev-loop/SKILL.md`, sync every installed copy
+   (`~/.claude/skills/jev-loop/`, `~/.agents/skills/jev-loop/`, `~/.hermes/skills/jev-loop/`)
+   - or just run `./install.sh` (`.\install.ps1` on Windows).
 4. Add a line under `## [Unreleased]` in `CHANGELOG.md` (Danish, sections
    `Tilføjet` / `Ændret` / `Rettet`).
 5. Commit with a clear message ending in the agent's `Co-Authored-By` line.
