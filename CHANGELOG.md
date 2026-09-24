@@ -5,6 +5,17 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Rettet
+- Loopen kunne køre den samme no-op-rolle igen og igen, når alle checks var grønne, men Jevs
+  `p_done` hang lige under tærsklen (set i kørslerne 20260924-193331 og 20260924-203249).
+  Serveren tæller nu ture uden ændring (samme rolle, alle checks grønne før og efter,
+  check-output uændret bortset fra tider). Efter `stall_turns` (standard 2) får Jev et
+  `stalled`-felt i sin tilstand og et ekstra noul-spørgsmål `review_now`: kan mere
+  executor-arbejde ændre noget, eller skal en uafhængig reviewer dømme nu? Ved
+  `p_review_now` ≥ `jev_review_threshold` (standard 0.5) går loopen til review
+  (`why: "stalled"`). Jev træffer beslutningen, reviewet afgør stadig om målet er nået, og et
+  afvist review nulstiller tælleren. Nye tests i `tests/test_jev_mcp.py`.
+
 ## [2026.09.24.1956] - 2026-09-24
 
 ### Tilføjet

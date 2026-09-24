@@ -67,6 +67,11 @@ loop_decide ──► execute ──► loop_record_turn ──► (checks køre
 Hårde stop: `max_turns`, `max_consecutive_failures`, eller Jev vælger `escalate`.
 En tur er en fejl, hvis executoren melder fejl, en tidligere grøn check går i stykker, eller
 intet flytter sig (ingen filer, samme fejl-output). En check, der blot endnu er rød, er ikke nok.
+Går loopen i stå - samme rolle, alle checks grønne og uændret output i `stall_turns` ture
+i træk - får Jev det at vide (`stalled`) og et ekstra spørgsmål: kan mere executor-arbejde
+ændre noget, eller skal en uafhængig reviewer dømme nu? Svarer Jev ja (≥ `jev_review_threshold`),
+går loopen til review, selv om `p_done` er under tærsklen. Koden beslutter intet; reviewet
+afgør stadig, om målet er nået.
 Alt logges i `runs/<id>.jsonl` (beslutningstapen, inkl. Jevs rå svar), og tilstanden i
 `runs/<id>.state.json`, så en kørsel kan genoptages.
 
@@ -87,6 +92,8 @@ Skillen skriver den for dig, men formatet er enkelt (se [goal.example.json](goal
 | `roles` | `when` = Jevs routing-kriterium, `brief` = instruks til executoren |
 | `jev_model` | Standard `jev-latest` |
 | `jev_done_threshold` | Hvornår Jev må sende til review (standard 0.8) |
+| `stall_turns` | Antal uændrede grønne ture med samme rolle, før Jev spørges om review (standard 2) |
+| `jev_review_threshold` | Hvornår Jevs svar på det spørgsmål sender til review (standard 0.5) |
 | `max_turns`, `max_consecutive_failures`, `check_timeout` | Hårde grænser |
 
 ## MCP-værktøjer

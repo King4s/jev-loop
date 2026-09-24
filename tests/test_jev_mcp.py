@@ -23,7 +23,7 @@ def goal(tmp_path, monkeypatch):
     return g
 
 
-def fake_jev(route="build", recovery="retry", p_done=None, seen=None):
+def fake_jev(route="build", recovery="retry", p_done=None, seen=None, review_now=0.1):
     def jev(model, state, qs):
         if seen is not None:
             seen.append((state, qs))
@@ -31,6 +31,8 @@ def fake_jev(route="build", recovery="retry", p_done=None, seen=None):
         a = {"route": {"type": "choice", "choice": route, "confidence": 0.8,
                        "probabilities": {"build": 0.7, "fix": 0.3}},
              "done": {"type": "noul", "noul": done}}
+        if "review_now" in qs:
+            a["review_now"] = {"type": "noul", "noul": review_now}
         if "recovery" in qs:
             a["recovery"] = {"type": "choice", "choice": recovery, "probabilities": {}}
         return {"model": "fake", "answers": a}
@@ -179,6 +181,65 @@ def test_jev_sees_files_and_review_progress(goal, monkeypatch):
     assert state["project_files"] == ["ok.txt"]
     assert state["last_review"]["missing"] == ["add docs"]
     assert [t["notes"] for t in state["last_review"]["turns_since_review"]] == ["added docs"]
+
+
+def green_run(goal, **cfg):
+    g = json.loads(goal.read_text())
+    g.update(cfg)
+    goal.write_text(json.dumps(g))
+    run = m.Run.create(goal)
+    Path(run.cfg["workdir"], "ok.txt").write_text("x")
+    return run
+
+
+def test_stalled_green_turns_ask_jev_about_review(goal, monkeypatch):
+    seen = []
+    monkeypatch.setattr(m, "jev", fake_jev(p_done=0.75, review_now=0.9, seen=seen))
+    run = green_run(goal)
+    assert turn(run.id, ["ok.txt"])["checks_ok"] is True   # made the check green: progress
+    turn(run.id, ["sync.log"])                              # idle 1 (a rewritten log is no change)
+    assert "review_now" not in seen[-1][1] and "stalled" not in seen[-1][0]
+    turn(run.id, ["sync.log"])                              # idle 2 -> stalled
+    d = m.Run(run.id).decide()
+    state, qs = seen[-1]
+    assert "review_now" in qs
+    assert state["stalled"]["turns_without_change"] == 2 and state["stalled"]["role"] == "build"
+    assert (d["next"], d["why"]) == ("review", "stalled")
+    tape = [json.loads(x) for x in Path(run.tape_path).read_text(encoding="utf-8").splitlines()]
+    assert tape[-1]["kind"] == "decide" and tape[-1]["p_review_now"] == 0.9
+
+    # The reviewer, not code, decides; a rejection resets the stall so it has to build up again.
+    m.Run(run.id).record_review(False, ["x"])
+    m.Run(run.id).record_turn("t", [], True)
+    m.Run(run.id).decide()
+    assert "review_now" not in seen[-1][1]
+
+
+def test_stall_leaves_the_decision_to_jev(goal, monkeypatch):
+    monkeypatch.setattr(m, "jev", fake_jev(p_done=0.75, review_now=0.2))
+    run = green_run(goal)
+    for _ in range(4):
+        r = turn(run.id, ["ok.txt"])
+        assert r["turn_failed"] is False                   # a stall is not a failure
+    assert m.Run(run.id).decide()["next"] == "execute"      # Jev said keep working
+
+
+def test_stall_needs_same_role_and_unchanged_checks(goal, monkeypatch):
+    seen = []
+    run = green_run(goal)
+    monkeypatch.setattr(m, "jev", fake_jev(p_done=0.5, seen=seen))
+    turn(run.id)
+    monkeypatch.setattr(m, "jev", fake_jev(route="fix", p_done=0.5, seen=seen))
+    turn(run.id)                                           # role switched: not idle
+    monkeypatch.setattr(m, "jev", fake_jev(p_done=0.5, seen=seen))
+    turn(run.id)
+    m.Run(run.id).decide()
+    assert "review_now" not in seen[-1][1]
+    assert m.Run(run.id).s["idle"] == 0
+
+    red = {"cmd": "c", "ok": True, "out": "5 passed in 0.31s"}
+    assert m.checks_signature([red]) == m.checks_signature([dict(red, out="5 passed in 1.02s")])
+    assert m.checks_signature([red]) != m.checks_signature([dict(red, out="6 passed in 0.31s")])
 
 
 def test_wrong_step_is_rejected(goal, monkeypatch):

@@ -15,6 +15,7 @@ Run:   python jev_mcp.py            (stdio MCP server)
 """
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -95,6 +96,15 @@ def turn_failed(prev, checks, executor_ok, files):
     return not moved and not files
 
 
+_VOLATILE = re.compile(r"\d+(?:\.\d+)?\s*(?:ms|s|sec|secs|seconds)\b|\d{1,2}:\d{2}(?::\d{2})?")
+
+
+def checks_signature(checks):
+    """What the checks said, minus durations and clock times, to tell a turn that
+    changed nothing from one that moved the checks."""
+    return [[c["cmd"], c["ok"], _VOLATILE.sub("#", c["out"])] for c in checks]
+
+
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", ".venv", ".git", ".pytest_cache"}
 
 
@@ -137,6 +147,8 @@ class Run:
         cfg["workdir"] = str(workdir)
         cfg.setdefault("jev_model", "jev-latest")
         cfg.setdefault("jev_done_threshold", 0.8)
+        cfg.setdefault("jev_review_threshold", 0.5)
+        cfg.setdefault("stall_turns", 2)
         cfg.setdefault("max_turns", 20)
         cfg.setdefault("max_consecutive_failures", 4)
         cfg.setdefault("check_timeout", 300)
@@ -152,7 +164,7 @@ class Run:
         checks = run_checks(cfg.get("checks", []), workdir, cfg["check_timeout"])
         run.s = {"cfg": cfg, "turn": 0, "phase": "decide", "checks": checks,
                  "checks_ok": all(c["ok"] for c in checks),  # no checks -> True
-                 "fails": 0, "last_role": None, "pending_role": None,
+                 "fails": 0, "idle": 0, "last_role": None, "pending_role": None,
                  "history": [], "review": None, "stopped": None}
         run.save()
         run.log("start", goal=cfg["goal"], workdir=cfg["workdir"], goal_file=str(p))
@@ -228,6 +240,16 @@ class Run:
             "recent_turns": [{k: h[k] for k in ("turn", "role", "files", "notes", "checks_ok")}
                              for h in s["history"][-5:]],
         }
+        # A fact, not a decision: the same role kept re-running with every check green and
+        # nothing in the checks changing. Jev decides what that means (review_now below).
+        idle = s.get("idle", 0)
+        stalled = s["checks_ok"] and idle >= cfg.get("stall_turns", 2)
+        if stalled:
+            state["stalled"] = {"turns_without_change": idle, "role": s["last_role"],
+                                "note": "All checks passed on each of these turns and their "
+                                        "output did not change. Jev only sees file names, check "
+                                        "results and turn notes; the independent reviewer reads "
+                                        "the actual work and is the only one who can end the run."}
         qs = {
             "route": {"type": "choice",
                       "instructions": "Which agent should take the next turn toward the `goal`?",
@@ -238,6 +260,12 @@ class Run:
                                      "every item in `last_review.missing` addressed by the turns in "
                                      "`last_review.turns_since_review`?"},
         }
+        if stalled:
+            qs["review_now"] = {"type": "noul",
+                                "instructions": "See `stalled`: the last turns changed nothing. Is more "
+                                                "executor work unlikely to change anything, so that an "
+                                                "independent reviewer should judge the `goal` and "
+                                                "`acceptance` now?"}
         if s["fails"]:
             qs["recovery"] = {"type": "choice",
                               "instructions": "The last turn failed (see `recent_turns` and `checks`). "
@@ -253,6 +281,10 @@ class Run:
         role, p_done = route["choice"], float(a["done"]["noul"])
         decision = {"turn": s["turn"], "route": role, "route_conf": route.get("confidence"),
                     "p_done": round(p_done, 3), "model": raw.get("model")}
+        p_review = float(a["review_now"]["noul"]) if stalled and "review_now" in a else None
+        if p_review is not None:
+            decision["stalled"] = idle
+            decision["p_review_now"] = round(p_review, 3)
 
         if s["fails"]:
             rec = a["recovery"]["choice"]
@@ -275,11 +307,15 @@ class Run:
             role = next(iter(roles))
 
         # Cascade: cheap Jev filter first; the review is the only way to finish.
-        if s["checks_ok"] and p_done >= cfg["jev_done_threshold"]:
+        # Jev sends the run to review when it thinks the goal is met, or when it judges
+        # that a stalled executor cannot change anything and the reviewer should look.
+        why = ("done" if p_done >= cfg["jev_done_threshold"] else
+               "stalled" if p_review is not None and p_review >= cfg.get("jev_review_threshold", 0.5) else None)
+        if s["checks_ok"] and why:
             s["pending_role"] = role
             s["phase"] = "review"
             self.save()
-            return {"next": "review", "turn": s["turn"], "p_done": round(p_done, 3),
+            return {"next": "review", "why": why, "turn": s["turn"], "p_done": round(p_done, 3),
                     "goal": cfg["goal"], "acceptance": cfg.get("acceptance", []),
                     "workdir": cfg["workdir"], "checks": s["checks"]}
         return self._execute(role)
@@ -287,6 +323,7 @@ class Run:
     def record_review(self, done, missing):
         self._expect("review")
         self.log("review", done=done, missing=missing)
+        self.s["idle"] = 0  # the reviewer has looked; a new stall has to build up again
         if done:
             return self._stop("goal_met", executor_turns=len(self.s["history"]))
         self.s["review"] = {"missing": [str(m)[:300] for m in missing][:10] or ["reviewer said not done (no details)"],
@@ -300,6 +337,11 @@ class Run:
         checks = run_checks(cfg.get("checks", []), cfg["workdir"], cfg["check_timeout"])
         checks_ok = executor_ok and all(c["ok"] for c in checks)
         failed = turn_failed(s["checks"], checks, executor_ok, files)
+        # Idle: the same role again, all checks green before and after, and nothing in
+        # them changed. Written file names don't count - a re-run rewrites its own log.
+        idle = (checks_ok and s["checks_ok"] and role == s["last_role"]
+                and checks_signature(checks) == checks_signature(s["checks"]))
+        s["idle"] = s.get("idle", 0) + 1 if idle else 0
         s["checks"], s["checks_ok"] = checks, checks_ok
         s["fails"] = s["fails"] + 1 if failed else 0
         s["last_role"], s["pending_role"], s["phase"] = role, None, "decide"
