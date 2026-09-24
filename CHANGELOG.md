@@ -5,6 +5,9 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Tilføjet
+- `AGENTS.md` beskriver Hermes-harnessen: værktøjsnavne (`mcp_jev_loop_*`), miljøfiltreringen og `${TYPESAFE_API_KEY}`, samt hvordan `hermes mcp add` opfører sig.
+
 ## [2026.09.24.1457] - 2026-09-24
 
 ### Tilføjet
