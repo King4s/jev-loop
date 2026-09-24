@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1457] - 2026-09-24
+
 ### Tilføjet
 - Hermes-understøttelse i `install.sh`: skillen synces også til `~/.hermes/skills/jev-loop/`,
   og serveren registreres med `hermes mcp add` (værktøjerne hedder `mcp_jev_loop_*`).
