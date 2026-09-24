@@ -5,6 +5,9 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Ændret
+- `AGENTS.md` lister hvilke maskiner jev-loop er installeret på.
+
 ## [2026.09.24.1436] - 2026-09-24
 
 ### Rettet
