@@ -46,8 +46,8 @@ tags `v<version>`, pushes and creates the GitHub release. Never edit `VERSION` b
 
 ## Things only the owner can do
 
-- GitHub OAuth scope changes (e.g. `gh auth refresh -s workflow`, needed before
-  `.github/workflows/` files can be pushed). Tell the owner the one command to run.
+- GitHub OAuth scope changes (browser device flow). Start `gh auth refresh -s <scope>` in the
+  background and give the owner the one-time code. Git pushes use SSH (`~/.ssh/github_ed25519`).
 - Setting `TYPESAFE_API_KEY` if it is missing.
 
 ## Don'ts

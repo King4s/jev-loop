@@ -1,5 +1,6 @@
 # jev-loop
 
+[![tests](https://github.com/King4s/jev-loop/actions/workflows/test.yml/badge.svg)](https://github.com/King4s/jev-loop/actions/workflows/test.yml)
 
 En byggeloop, hvor **Jev beslutter** og **Claude Code udfører**.
 

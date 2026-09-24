@@ -5,6 +5,9 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Tilføjet
+- GitHub Actions CI: testene køres på Ubuntu og Windows ved hvert push.
+
 ## [2026.09.24.1425] - 2026-09-24
 
 ### Tilføjet
