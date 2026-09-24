@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import jev_mcp as m  # noqa: E402
 
-CHECK = "python -c \"import os,sys; sys.exit(0 if os.path.exists('ok.txt') else 1)\""
+CHECK = f"\"{sys.executable}\" -c \"import os,sys; sys.exit(0 if os.path.exists('ok.txt') else 1)\""
 
 
 @pytest.fixture
@@ -140,3 +140,15 @@ def test_mcp_server_exposes_tools():
     import asyncio
     names = {t.name for t in asyncio.run(m.build_server().list_tools())}
     assert names == {"loop_start", "loop_decide", "loop_record_review", "loop_record_turn", "loop_status"}
+
+
+def test_api_key_env_then_file(tmp_path, monkeypatch):
+    kf = tmp_path / "typesafe_api_key"
+    monkeypatch.setattr(m, "KEY_FILE", kf)
+    monkeypatch.setenv("TYPESAFE_API_KEY", "from-env")
+    assert m.api_key() == "from-env"
+    monkeypatch.delenv("TYPESAFE_API_KEY")
+    with pytest.raises(RuntimeError, match="No TypeSafe API key"):
+        m.api_key()
+    kf.write_text("from-file\n")
+    assert m.api_key() == "from-file"

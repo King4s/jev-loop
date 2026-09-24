@@ -21,6 +21,15 @@ Jev API facts (verified against docs.typesafe.ai/api): response is
 {"type": "noul", "noul": p}}}`. Model `jev-latest`. Read the live docs
 (https://docs.typesafe.ai/llms.txt) before changing questions or parsing.
 
+## Machines
+
+Installed on the owner's machines as a clone in `~/jev-loop` (Linux: venv in `.venv`,
+`install.sh`; Windows: `F:\AI-Projekter\jev-loop`, `install.ps1`). SSH aliases are in the
+Windows machine's `~/.ssh/config` (loki, thor, odin, freja, tilbud-grok-bot). To update a
+machine: `ssh <host> 'cd ~/jev-loop && git pull -q && ./install.sh'`. The key lives in
+`~/.config/jev-loop/typesafe_api_key` (mode 600); copy it over SSH stdin, never as an argument.
+Health check anywhere: `python jev_mcp.py --check`.
+
 ## Every change
 
 1. Make the change. Keep `jev_mcp.py` the source of truth for loop behaviour.

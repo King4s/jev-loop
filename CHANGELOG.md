@@ -5,6 +5,14 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Tilføjet
+- `install.sh` til Linux/macOS (venv, skill, MCP-registrering, live-tjek).
+- `jev_mcp.py --check`: lille live-kald til Jev som sundhedstjek; installerne kører det til sidst.
+- API-nøglen kan ligge i `~/.config/jev-loop/typesafe_api_key`, når miljøvariablen ikke er sat.
+
+### Rettet
+- Testene bruger den kørende Python i stedet for `python` fra PATH.
+
 ## [2026.09.24.1430] - 2026-09-24
 
 ### Tilføjet

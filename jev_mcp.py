@@ -30,10 +30,21 @@ VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() if (ROOT / "VER
 
 # ---------- Jev ----------
 
-def jev(model, state, questions, retries=4):
-    key = os.environ.get("TYPESAFE_API_KEY")
+KEY_FILE = Path.home() / ".config" / "jev-loop" / "typesafe_api_key"
+
+
+def api_key():
+    """TYPESAFE_API_KEY from the environment, else from ~/.config/jev-loop/typesafe_api_key."""
+    key = os.environ.get("TYPESAFE_API_KEY", "").strip()
+    if not key and KEY_FILE.exists():
+        key = KEY_FILE.read_text(encoding="utf-8").strip()
     if not key:
-        raise RuntimeError("TYPESAFE_API_KEY is not set in the MCP server's environment.")
+        raise RuntimeError(f"No TypeSafe API key: set TYPESAFE_API_KEY or write it to {KEY_FILE}.")
+    return key
+
+
+def jev(model, state, questions, retries=4):
+    key = api_key()
     for attempt in range(retries + 1):
         r = requests.post(
             API, timeout=60,
@@ -337,5 +348,18 @@ def build_server():
     return mcp
 
 
+def self_check():
+    """One tiny live Jev call: proves dependencies, key and network work. Exit 0 = OK."""
+    import mcp.server.mcpserver  # noqa: F401  (dependency check)
+    raw = jev("jev-latest", "The build passed and all tests are green.",
+              {"ok": {"type": "noul", "instructions": "Did the build succeed?"}})
+    p = raw["answers"]["ok"]["noul"]
+    print(f"jev-loop {VERSION}: OK (model {raw.get('model')}, p={p:.2f})")
+    return 0 if p > 0.5 else 1
+
+
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv:
+        sys.exit(self_check())
     build_server().run()

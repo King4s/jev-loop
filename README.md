@@ -17,13 +17,21 @@ reviewer, og **kun reviewet kan erklære opgaven færdig**.
 ## Kom i gang
 
 Kræver Python 3.11+, [Claude Code](https://claude.com/claude-code) og en
-[TypeSafe API-nøgle](https://docs.typesafe.ai) i miljøvariablen `TYPESAFE_API_KEY`.
+[TypeSafe API-nøgle](https://docs.typesafe.ai), enten i miljøvariablen `TYPESAFE_API_KEY`
+eller i filen `~/.config/jev-loop/typesafe_api_key` (kun læsbar for dig).
 
 ```powershell
-git clone https://github.com/King4s/jev-loop.git
-cd jev-loop
-.\install.ps1
+# Windows
+git clone https://github.com/King4s/jev-loop.git; cd jev-loop; .\install.ps1
 ```
+
+```bash
+# Linux / macOS (laver et venv i repoet)
+git clone https://github.com/King4s/jev-loop.git ~/jev-loop && ~/jev-loop/install.sh
+```
+
+Installeren slutter med `jev_mcp.py --check`, et lille live-kald til Jev, der viser at
+afhængigheder, nøgle og netværk virker. Opdatering: `git pull` og kør installeren igen.
 
 Genstart Claude Code, og sig så bare hvad du vil have bygget:
 
