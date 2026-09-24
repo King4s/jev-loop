@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.2101] - 2026-09-24
+
 ### Rettet
 - Loopen kunne køre den samme no-op-rolle igen og igen, når alle checks var grønne, men Jevs
   `p_done` hang lige under tærsklen (set i kørslerne 20260924-193331 og 20260924-203249).
