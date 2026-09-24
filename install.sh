@@ -6,8 +6,16 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
 
-if [ ! -x .venv/bin/python ]; then
-  python3 -m venv .venv || { echo "python3-venv missing: sudo apt install python3-venv" >&2; exit 1; }
+if [ ! -x .venv/bin/python ] || ! .venv/bin/python -m pip --version >/dev/null 2>&1; then
+  rm -rf .venv
+  if ! python3 -m venv .venv 2>/dev/null; then
+    # Debian/Ubuntu without python3-venv (no ensurepip): bootstrap pip from PyPA instead.
+    rm -rf .venv
+    python3 -m venv --without-pip .venv
+    curl -fsSL https://bootstrap.pypa.io/get-pip.py -o .venv/get-pip.py
+    .venv/bin/python .venv/get-pip.py -q
+    rm -f .venv/get-pip.py
+  fi
 fi
 .venv/bin/python -m pip install -q --upgrade pip
 .venv/bin/python -m pip install -q -r requirements.txt

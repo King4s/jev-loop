@@ -15,7 +15,7 @@ claude mcp remove jev-loop --scope user 2>$null | Out-Null
 claude mcp add jev-loop --scope user -- python $server
 Write-Host "MCP server registered: jev-loop -> $server"
 
-$keyFile = Join-Path $HOME ".config\jev-loop	ypesafe_api_key"
+$keyFile = Join-Path $HOME ".config\jev-loop\typesafe_api_key"
 if (-not [Environment]::GetEnvironmentVariable("TYPESAFE_API_KEY", "User") -and -not $env:TYPESAFE_API_KEY -and -not (Test-Path $keyFile)) {
     Write-Warning "No TypeSafe key. Set TYPESAFE_API_KEY (user env) or write it to $keyFile, then restart Claude Code."
 } else {
