@@ -95,6 +95,72 @@ def test_escalate_and_max_failures(goal, monkeypatch):
     assert m.Run(run.id).decide()["reason"] == "escalate"
 
 
+def exists_check(name):
+    return f"\"{sys.executable}\" -c \"import os,sys; sys.exit(0 if os.path.exists('{name}') else 1)\""
+
+
+@pytest.fixture
+def two_checks(goal):
+    """A goal with an early check (a.txt) and a late 'outcome' check (b.txt)."""
+    g = json.loads(goal.read_text())
+    g.update(checks=[exists_check("a.txt"), exists_check("b.txt")], max_consecutive_failures=3)
+    goal.write_text(json.dumps(g))
+    return goal
+
+
+def turn(run_id, files=(), ok=True):
+    m.Run(run_id).decide()
+    return m.Run(run_id).record_turn("t", list(files), ok)
+
+
+def test_progress_with_a_late_check_still_red_is_not_a_failure(two_checks, monkeypatch):
+    monkeypatch.setattr(m, "jev", fake_jev(recovery="retry"))
+    run = m.Run.create(two_checks)
+    ws = Path(run.cfg["workdir"])
+    r = turn(run.id)                      # stall: nothing changed, no files
+    assert (r["turn_failed"], r["consecutive_fails"]) == (True, 1)
+    (ws / "a.txt").write_text("x")
+    r = turn(run.id, ["a.txt"])           # early check turned green, late check still red
+    assert r["checks_ok"] is False
+    assert (r["turn_failed"], r["consecutive_fails"]) == (False, 0)
+    for _ in range(4):                    # more work that keeps a green, b not reachable yet
+        r = turn(run.id, ["src.py"])
+        assert (r["turn_failed"], r["consecutive_fails"]) == (False, 0)
+    assert m.Run(run.id).decide()["next"] == "execute"  # no escalation
+
+
+def test_regression_counts_as_failure(two_checks, monkeypatch):
+    monkeypatch.setattr(m, "jev", fake_jev(recovery="retry"))
+    run = m.Run.create(two_checks)
+    ws = Path(run.cfg["workdir"])
+    (ws / "a.txt").write_text("x")
+    assert turn(run.id, ["a.txt"])["consecutive_fails"] == 0
+    (ws / "a.txt").unlink()
+    r = turn(run.id, ["a.txt"])           # files written, but a passing check broke
+    assert (r["turn_failed"], r["consecutive_fails"]) == (True, 1)
+
+
+def test_executor_not_ok_counts_even_when_checks_pass(two_checks, monkeypatch):
+    monkeypatch.setattr(m, "jev", fake_jev(recovery="retry"))
+    run = m.Run.create(two_checks)
+    ws = Path(run.cfg["workdir"])
+    (ws / "a.txt").write_text("x")
+    (ws / "b.txt").write_text("x")
+    r = turn(run.id, ["a.txt", "b.txt"], ok=False)
+    assert (r["checks_ok"], r["turn_failed"], r["consecutive_fails"]) == (False, True, 1)
+    r = turn(run.id, [], ok=True)
+    assert (r["checks_ok"], r["turn_failed"], r["consecutive_fails"]) == (True, False, 0)
+
+
+def test_turn_failed_unit():
+    red = {"cmd": "c", "ok": False, "out": "3 failed"}
+    assert m.turn_failed([red], [red], True, []) is True                        # stall
+    assert m.turn_failed([red], [red], True, ["x.py"]) is False                 # work done
+    assert m.turn_failed([red], [dict(red, out="1 failed")], True, []) is False  # moved
+    assert m.turn_failed([dict(red, ok=True)], [red], True, ["x.py"]) is True   # regression
+    assert m.turn_failed([red], [dict(red, ok=True)], False, []) is True         # executor failed
+
+
 def test_jev_sees_files_and_review_progress(goal, monkeypatch):
     seen = []
     monkeypatch.setattr(m, "jev", fake_jev(seen=seen))

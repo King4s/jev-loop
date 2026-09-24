@@ -5,6 +5,13 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Rettet
+- En tur tæller ikke længere som fejl, bare fordi en check er rød. Den tæller kun, når
+  executoren melder fejl, når en check der før var grøn går i stykker, eller når intet
+  flyttede sig (ingen filer og samme fejl-output). Et loop med en check, der først kan
+  blive grøn til sidst (fx en live-verifikation), eskalerer derfor ikke længere midt i
+  et fremskridt. `loop_record_turn` returnerer nu også `turn_failed`.
+
 ## [2026.09.24.1922] - 2026-09-24
 
 ### Ændret

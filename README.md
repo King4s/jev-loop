@@ -52,6 +52,8 @@ loop_decide ──► execute ──► loop_record_turn ──► (checks køre
 ```
 
 Hårde stop: `max_turns`, `max_consecutive_failures`, eller Jev vælger `escalate`.
+En tur er en fejl, hvis executoren melder fejl, en tidligere grøn check går i stykker, eller
+intet flytter sig (ingen filer, samme fejl-output). En check, der blot endnu er rød, er ikke nok.
 Alt logges i `runs/<id>.jsonl` (beslutningstapen, inkl. Jevs rå svar), og tilstanden i
 `runs/<id>.state.json`, så en kørsel kan genoptages.
 
