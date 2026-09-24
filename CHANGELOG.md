@@ -1,0 +1,29 @@
+# Changelog
+
+Versioner er datobaserede: `yyyy.mm.dd.ttmm` (lokal tid for udgivelsen).
+Nye udgivelser laves med `.\release.ps1`.
+
+## [Unreleased]
+
+## [2026.09.24.1422] - 2026-09-24
+
+Første udgivelse.
+
+### Tilføjet
+- `jev_mcp.py`: MCP-server med værktøjerne `loop_start`, `loop_decide`,
+  `loop_record_turn`, `loop_record_review` og `loop_status`. Serveren ejer Jev-kald,
+  checks, hårde stop og beslutningstapen; Claude Code er executor.
+- Skill `jev-loop`: interviewer brugeren, skriver `goal.json` og kører loopen.
+- `install.ps1` (skill + MCP-registrering) og `release.ps1` (datoversion, tag, GitHub-release).
+- Protokoltests med mocket Jev (`tests/`).
+
+### Rettet
+- Jev kaldes direkte på `api.typesafe.ai/v1/systemone` med `TYPESAFE_API_KEY`;
+  svarformatet er verificeret mod dokumentationen (i stedet for gættet parsing).
+- `recovery=retry` overskriver ikke længere Jevs `route`-valg.
+- `reroute` tvinger nu en anden rolle, hvis `route` peger på den samme.
+- Jev ser projektets filliste, så den ikke beder om at bygge det, der findes.
+- Reviewerens mangler vises sammen med turene siden reviewet, så en løst mangel ikke
+  holder `p_done` nede og får loopen til at køre i ring.
+- Ingen Jev-kald, når `max_consecutive_failures` allerede er nået.
+- Konsistent `checks_ok`, når der ikke er konfigureret checks.

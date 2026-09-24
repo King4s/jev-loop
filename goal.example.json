@@ -1,0 +1,35 @@
+{
+  "goal": "Build a small Python CLI 'wordfreq' that prints the 10 most common words in a UTF-8 text file, case-insensitive, ignoring punctuation.",
+  "acceptance": [
+    "Running `python wordfreq.py sample.txt` prints up to 10 lines of 'word count', most frequent first",
+    "Handles Danish letters (æ, ø, å) correctly",
+    "Exits with a clear error message and non-zero code if the file does not exist",
+    "pytest tests cover all of the above"
+  ],
+  "workdir": "workspace",
+  "checks": ["python -m pytest -q"],
+
+  "jev_model": "jev-latest",
+  "executor_model": "anthropic/claude-sonnet-5",
+  "review_model": "anthropic/claude-opus-5.5",
+
+  "jev_done_threshold": 0.8,
+  "max_turns": 20,
+  "max_consecutive_failures": 4,
+  "check_timeout": 300,
+
+  "roles": {
+    "build": {
+      "when": "Implementation code is missing or incomplete relative to the goal",
+      "brief": "Implement the features. Write complete, working files. Do not write tests."
+    },
+    "test": {
+      "when": "Tests are missing or do not cover every acceptance criterion",
+      "brief": "Write or extend pytest tests that verify the acceptance criteria. Do not change implementation code."
+    },
+    "fix": {
+      "when": "Checks are failing with a concrete error message",
+      "brief": "Read the failing check output and fix the root cause with the smallest correct change."
+    }
+  }
+}

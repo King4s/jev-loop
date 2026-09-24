@@ -1,0 +1,17 @@
+# run state and decision tapes (contain local paths and project content)
+runs/
+
+# local goal files and example workspaces
+goal.json
+workspace/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# secrets
+.env
+*.key
