@@ -8,7 +8,7 @@ Nye udgivelser laves med `.\release.ps1`.
 ## [2026.09.24.1436] - 2026-09-24
 
 ### Rettet
-- `install.ps1`: stien til nøglefilen var ødelagt (`	` blev til et tabulatortegn).
+- `install.ps1`: stien til nøglefilen var ødelagt (`\t` blev til et tabulatortegn).
 - `install.sh` virker også uden `python3-venv`/ensurepip (henter pip fra bootstrap.pypa.io).
 
 ## [2026.09.24.1435] - 2026-09-24
