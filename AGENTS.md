@@ -13,8 +13,11 @@ and answer them in Danish.
   The client harness (Claude Code / Codex / Hermes) is the executor. Run state:
   `runs/<id>.state.json`, tape: `runs/<id>.jsonl`.
 - `skill/jev-loop/SKILL.md` - the harness-neutral skill (interview -> goal.json -> loop).
-  Installed copies: `~/.claude/skills/jev-loop/` (Claude Code), `~/.agents/skills/jev-loop/`
-  (Codex), `~/.hermes/skills/jev-loop/` (Hermes); the installers sync them.
+  One file, all harnesses: tool names are given per harness inline (`clarify` vs
+  `AskUserQuestion` vs plain chat, `delegate_task` vs the `general-purpose` agent vs
+  `codex exec`). Installed copies: `~/.claude/skills/jev-loop/` (Claude Code),
+  `~/.agents/skills/jev-loop/` (Codex) and `~/.hermes/skills/jev-loop/` (Hermes);
+  both installers sync them.
 - `loop.py` - older standalone variant (executor/reviewer via OpenRouter). Secondary.
 - `tests/test_jev_mcp.py` - protocol tests with Jev mocked. No network, no key needed.
 
@@ -28,18 +31,35 @@ Jev API facts (verified against docs.typesafe.ai/api): response is
 Installed on the owner's machines as a clone in `~/jev-loop` (Linux: venv in `.venv`,
 `install.sh`; Windows: `F:\AI-Projekter\jev-loop`, `install.ps1`). SSH aliases are in the
 Windows machine's `~/.ssh/config`. Installed (2026-09-24): Windows (Gamer), loki, thor, odin,
-mb-pro. Not yet (offline then): freja, tilbud-grok-bot, macbook-pro (macOS, Tailscale only, no SSH alias). To update a
+mb-pro. Not yet (offline then): tilbud-grok-bot. To update a
 machine: `ssh <host> 'cd ~/jev-loop && git pull -q && ./install.sh'`. The key lives in
 `~/.config/jev-loop/typesafe_api_key` (mode 600); copy it over SSH stdin, never as an argument.
-Health check anywhere: `python jev_mcp.py --check`.
+Health check anywhere: `python jev_mcp.py --check`. On Odin, `mb`'s clone is the working
+copy; Hermes reads its own clone in `/home/hermes/jev-loop`.
+
+## Harness facts
+
+- Hermes drives the same loop through the same server; the tools appear as
+  `mcp_jev_loop_loop_start` etc. (`mcp_<server>_<tool>`).
+- Hermes gives a stdio MCP subprocess a **filtered** environment, so `TYPESAFE_API_KEY`
+  reaches the server only through the `env` block in `mcp_servers.jev-loop`, stored as the
+  literal `${TYPESAFE_API_KEY}` which Hermes resolves from `~/.hermes/.env`. An unresolved
+  placeholder would be sent to Jev as the key, so it is passed only when the key is really
+  there - otherwise the server reads `~/.config/jev-loop/typesafe_api_key` itself.
+  `install.sh` makes that call.
+- `hermes mcp add NAME --command ... [--env K=V] --args ...` is discovery-first and asks
+  "Enable all N tools?". With stdin piped (`printf 'y\n' |`) it is non-interactive, exits 0
+  and writes `enabled: true`; `--args` must be last. `HERMES_HOME` redirects the whole
+  config, so the install path can be tested against a throwaway home.
 
 ## Every change
 
 1. Make the change. Keep `jev_mcp.py` the source of truth for loop behaviour.
 2. `python -m pytest -q tests` must pass. Add a test for new protocol behaviour.
-3. If you changed `skill/jev-loop/SKILL.md`, sync every installed copy
-   (`~/.claude/skills/jev-loop/`, `~/.agents/skills/jev-loop/`, `~/.hermes/skills/jev-loop/`)
-   - or just run `./install.sh` (`.\install.ps1` on Windows).
+3. If you changed `skill/jev-loop/SKILL.md`, sync the installed copies: run `./install.sh`
+   and/or `.\install.ps1` (both are safe to re-run; each syncs the skill and registers the
+   server). The copies live in `~/.claude/skills/jev-loop/`, `~/.agents/skills/jev-loop/`
+   and `~/.hermes/skills/jev-loop/`.
 4. Add a line under `## [Unreleased]` in `CHANGELOG.md` (Danish, sections
    `Tilføjet` / `Ændret` / `Rettet`).
 5. Commit with a clear message ending in the agent's `Co-Authored-By` line.

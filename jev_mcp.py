@@ -74,6 +74,27 @@ def run_checks(cmds, workdir, timeout):
     return results
 
 
+def turn_failed(prev, checks, executor_ok, files):
+    """Did this turn fail (counts toward max_consecutive_failures)?
+
+    A red check alone is not a failure: some checks (e.g. a live data verify) can only
+    turn green late in the run. A turn fails when the executor says so, when a check
+    that passed before now fails, or when it stalled: nothing improved, no files were
+    written and the same checks fail with the same output."""
+    if not executor_ok:
+        return True
+    if all(c["ok"] for c in checks):
+        return False
+    before = {c["cmd"]: c for c in prev}
+    if any(before.get(c["cmd"], {}).get("ok") and not c["ok"] for c in checks):
+        return True  # regression
+    # No regressions from here on, so any change is movement: a check turned green,
+    # or a failing check fails differently (e.g. fewer failing tests).
+    moved = any(c["cmd"] not in before or c["ok"] != before[c["cmd"]]["ok"]
+                or c["out"] != before[c["cmd"]]["out"] for c in checks)
+    return not moved and not files
+
+
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", ".venv", ".git", ".pytest_cache"}
 
 
@@ -278,14 +299,16 @@ class Run:
         role = s["pending_role"]
         checks = run_checks(cfg.get("checks", []), cfg["workdir"], cfg["check_timeout"])
         checks_ok = executor_ok and all(c["ok"] for c in checks)
+        failed = turn_failed(s["checks"], checks, executor_ok, files)
         s["checks"], s["checks_ok"] = checks, checks_ok
-        s["fails"] = 0 if checks_ok else s["fails"] + 1
+        s["fails"] = s["fails"] + 1 if failed else 0
         s["last_role"], s["pending_role"], s["phase"] = role, None, "decide"
-        h = {"turn": s["turn"], "role": role, "files": files, "notes": notes[:300], "checks_ok": checks_ok}
+        h = {"turn": s["turn"], "role": role, "files": files, "notes": notes[:300], "checks_ok": checks_ok,
+             "failed": failed}
         s["history"].append(h)
         self.log("turn", **h)
         self.save()
-        return {"turn": s["turn"], "checks_ok": checks_ok, "consecutive_fails": s["fails"],
+        return {"turn": s["turn"], "checks_ok": checks_ok, "turn_failed": failed, "consecutive_fails": s["fails"],
                 "checks": [{"cmd": c["cmd"], "ok": c["ok"], "out": c["out"][-1200:]} for c in checks],
                 "next": "call loop_decide"}
 

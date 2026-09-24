@@ -17,6 +17,8 @@ Nye udgivelser laves med `.\release.ps1`.
 - `tests/test_install_sh.py`: kører den rigtige `install.sh` i en sandkasse og kræver at
   Codex-skillen lander i `~/.agents/skills/jev-loop/` og at serveren registreres med
   `codex mcp add` - samt at en manglende `codex` blot springes over.
+- `tests/test_install_ps1.py`: PowerShell-parseren skal acceptere `install.ps1`, og scriptet
+  skal stadig indeholde Codex-blokken.
 
 ### Ændret
 - `skill/jev-loop/SKILL.md` dækker nu tre harnesses: spørgsmål via `clarify` (Hermes),
@@ -25,6 +27,29 @@ Nye udgivelser laves med `.\release.ps1`.
   opsætningsafsnittet viser skill- og MCP-placeringen pr. harness.
 - `README.md`, `AGENTS.md` og `jev_mcp.py`s docstring er harness-neutrale: Claude Code,
   Codex eller Hermes er executoren.
+## [2026.09.24.1936] - 2026-09-24
+
+### Rettet
+- En tur tæller ikke længere som fejl, bare fordi en check er rød. Den tæller kun, når
+  executoren melder fejl, når en check der før var grøn går i stykker, eller når intet
+  flyttede sig (ingen filer og samme fejl-output). Et loop med en check, der først kan
+  blive grøn til sidst (fx en live-verifikation), eskalerer derfor ikke længere midt i
+  et fremskridt. `loop_record_turn` returnerer nu også `turn_failed`.
+
+## [2026.09.24.1922] - 2026-09-24
+
+### Ændret
+- `AGENTS.md`: freja og macbook-pro findes ikke længere og er fjernet fra maskinlisten.
+
+## [2026.09.24.1541] - 2026-09-24
+
+### Ændret
+- README'ens overskrift og GitHub-beskrivelsen nævner begge harnesses (`Claude Code eller Hermes`).
+
+## [2026.09.24.1525] - 2026-09-24
+
+### Tilføjet
+- `AGENTS.md` beskriver Hermes-harnessen: værktøjsnavne (`mcp_jev_loop_*`), miljøfiltreringen og `${TYPESAFE_API_KEY}`, samt hvordan `hermes mcp add` opfører sig.
 
 ## [2026.09.24.1457] - 2026-09-24
 
