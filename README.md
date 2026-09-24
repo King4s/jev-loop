@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/King4s/jev-loop/actions/workflows/test.yml/badge.svg)](https://github.com/King4s/jev-loop/actions/workflows/test.yml)
 
-En byggeloop, hvor **Jev beslutter** og **Claude Code udfører**.
+En byggeloop, hvor **Jev beslutter** og **Claude Code eller Hermes udfører**.
 
 [Jev](https://docs.typesafe.ai) (TypeSafe) er en hurtig beslutningsmodel, der svarer med
 typede valg og sandsynligheder i stedet for tekst. I jev-loop afgør Jev for hver tur:
