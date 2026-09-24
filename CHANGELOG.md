@@ -5,6 +5,8 @@ New releases are made with `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.2104] - 2026-09-24
+
 ### Changed
 - The project is now in English on GitHub: `README.md`, `CHANGELOG.md` (including earlier
   entries and the GitHub release notes), `AGENTS.md`, comments in `install.sh` and the
