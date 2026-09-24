@@ -5,6 +5,9 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+### Ændret
+- `AGENTS.md`: freja og macbook-pro findes ikke længere og er fjernet fra maskinlisten.
+
 ## [2026.09.24.1438] - 2026-09-24
 
 ### Ændret

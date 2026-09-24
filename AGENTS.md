@@ -26,7 +26,7 @@ Jev API facts (verified against docs.typesafe.ai/api): response is
 Installed on the owner's machines as a clone in `~/jev-loop` (Linux: venv in `.venv`,
 `install.sh`; Windows: `F:\AI-Projekter\jev-loop`, `install.ps1`). SSH aliases are in the
 Windows machine's `~/.ssh/config`. Installed (2026-09-24): Windows (Gamer), loki, thor, odin,
-mb-pro. Not yet (offline then): freja, tilbud-grok-bot, macbook-pro (macOS, Tailscale only, no SSH alias). To update a
+mb-pro. Not yet (offline then): tilbud-grok-bot. To update a
 machine: `ssh <host> 'cd ~/jev-loop && git pull -q && ./install.sh'`. The key lives in
 `~/.config/jev-loop/typesafe_api_key` (mode 600); copy it over SSH stdin, never as an argument.
 Health check anywhere: `python jev_mcp.py --check`.
