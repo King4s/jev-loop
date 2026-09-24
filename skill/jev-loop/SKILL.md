@@ -1,6 +1,6 @@
 ---
 name: jev-loop
-description: Build something with the Jev-driven build loop - interview the user, write the goal file for them, then run it (TypeSafe's Jev decides which role works next and when to stop; Claude Code does the work; a subagent reviews). Use when the user says "jev", "jev-loop", "kør loopen", "byg ... med jev", "lad Jev styre", or invokes /jev-loop - with or without a goal file or path. The user never has to remember paths or the goal format.
+description: Build something with the Jev-driven build loop - interview the user, write the goal file for them, then run it (TypeSafe's Jev decides which role works next and when to stop; Claude Code or Hermes does the work; a subagent reviews). Use when the user says "jev", "jev-loop", "kør loopen", "byg ... med jev", "lad Jev styre", or invokes /jev-loop - with or without a goal file or path. The user never has to remember paths or the goal format.
 ---
 
 # jev-loop
@@ -12,16 +12,17 @@ Talk to the user in their language (usually Danish).
 ## Phase 1 - Interview (skip what you already know)
 
 Pull everything you can from the user's message and the current directory first.
-Then ask only what is still unknown, in ONE `AskUserQuestion` call (max 4 questions,
+Then ask only what is still unknown, in ONE structured question call (max 4-5 questions,
 concrete options with a recommended default first; the user can always pick "Other").
+Use `clarify` in Hermes, `AskUserQuestion` in Claude Code.
 If *what to build* is completely missing, ask that first in plain chat.
 
 What you need, and good defaults:
 
 1. **Hvad skal bygges** - one sentence goal. Rewrite vague wishes into a concrete, testable goal.
-2. **Hvor** - project folder. Default: a new folder `F:\AI-Projekter\<kort-navn>`
-   (or the current working directory if the user is already in a project for this).
-   If the folder already has code, the loop continues from it.
+2. **Hvor** - project folder. Default: a new folder for this project next to where the user
+   keeps projects (Windows: `F:\AI-Projekter\<kort-navn>`; otherwise the current working
+   directory). If the folder already has code, the loop continues from it.
 3. **Sprog / stack** - infer from the goal or existing files; ask only if unclear
    (e.g. Python / Node-TypeScript / other).
 4. **Hvordan ved vi, at det virker** - this decides the `checks`. Propose them:
@@ -62,7 +63,7 @@ Adapt roles only if the task clearly needs it (e.g. a `docs` or `ui` role, each 
 clear `when`). `workdir` "." = the project folder itself.
 
 Show the user a short summary (goal, criteria as bullets, checks, folder, size) and ask
-for a go with `AskUserQuestion` ("Kør" / "Ret noget"). Apply corrections, then start.
+for a go with the same question tool ("Kør" / "Ret noget"). Apply corrections, then start.
 If the user said to just go, skip the confirmation.
 
 If a `goal.json` already exists in the folder, ask whether to reuse it, continue an
@@ -72,6 +73,8 @@ unfinished run (`loop_status`), or write a new one.
 
 Jev (via the `jev-loop` MCP server) is the decider; you are the executor. Never decide
 routing, "done" or giving up yourself - the server does, and it runs the checks.
+In Hermes the tools are named `mcp_jev_loop_loop_start`, `mcp_jev_loop_loop_decide`,
+`mcp_jev_loop_loop_record_turn`, `mcp_jev_loop_loop_record_review`, `mcp_jev_loop_loop_status`.
 
 1. `loop_start(goal_path)` -> `run_id`.
 2. `loop_decide(run_id)` and act on `next`:
@@ -81,7 +84,8 @@ routing, "done" or giving up yourself - the server does, and it runs the checks.
      `loop_record_turn(run_id, notes, files, executor_ok)` - `notes` is 1-2 honest
      sentences, `files` relative to `workdir`, `executor_ok=false` if you could not do
      the step. Don't run the configured checks yourself; the server does.
-   - **`review`**: spawn an independent `general-purpose` subagent (it must not see your
+   - **`review`**: spawn an independent subagent (`delegate_task` in Hermes; the
+     `general-purpose` Task agent in Claude Code) in its own context (it must not see your
      reasoning). Give it the goal, acceptance criteria, workdir and check results; it
      reads the files (no edits) and answers strictly - passing checks are necessary, not
      sufficient - with `{"done": bool, "missing": [...]}`. Pass the verdict unchanged to
@@ -91,12 +95,19 @@ routing, "done" or giving up yourself - the server does, and it runs the checks.
 3. Repeat until `stop`. One short line to the user per turn (turn, role, checks ok/fail).
 
 If a tool returns `{"error": ...}`, fix the cause and retry that call; never bypass the
-server. If the `jev-loop` tools are missing, tell the user to restart Claude Code (setup below).
+server. If the `jev-loop` tools are missing, tell the user to restart the harness so it
+picks up the new MCP server (setup below).
 
 ## Setup (once)
 
-From a clone of https://github.com/King4s/jev-loop run `.\install.ps1` (installs
-dependencies, copies this skill, registers the `jev-loop` MCP server), then restart Claude Code.
+From a clone of https://github.com/King4s/jev-loop run `./install.sh` (Linux, macOS, WSL)
+or `.\install.ps1` (Windows). Both install dependencies, sync this skill and register the
+`jev-loop` MCP server - `install.sh` covers both harnesses: Claude Code
+(`~/.claude/skills/jev-loop/`) and Hermes (`~/.hermes/skills/jev-loop/` + `hermes mcp add`).
+Then restart the harness / start a new session.
 
-`TYPESAFE_API_KEY` must be set in the user environment. Checks run model-written code in
-a shell - for untrusted goals prefer a VM or container.
+The TypeSafe key goes in the environment as `TYPESAFE_API_KEY` or in
+`~/.config/jev-loop/typesafe_api_key` (mode 600); the server reads both. In Hermes the key
+must be in the key file, or in `~/.hermes/.env` so the server's `env` block can resolve it -
+a stdio MCP subprocess does not inherit your shell. Checks run model-written code in a
+shell - for untrusted goals prefer a VM or container.
