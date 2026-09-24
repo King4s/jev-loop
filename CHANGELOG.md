@@ -5,6 +5,8 @@ Nye udgivelser laves med `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.24.1936] - 2026-09-24
+
 ### Rettet
 - En tur tæller ikke længere som fejl, bare fordi en check er rød. Den tæller kun, når
   executoren melder fejl, når en check der før var grøn går i stykker, eller når intet
