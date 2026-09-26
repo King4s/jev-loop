@@ -5,6 +5,25 @@ New releases are made with `.\release.ps1`.
 
 ## [Unreleased]
 
+### Added
+- `install.ps1` sets up Hermes on Windows the way `install.sh` already did: syncs the skill to
+  `~/.hermes/skills/jev-loop/` and registers the MCP server, passing `TYPESAFE_API_KEY`
+  through the env block only when `~/.hermes/.env` can resolve it.
+
+### Fixed
+- A run whose executor kept doing real work could never reach a reviewer: every turn
+  changed the check output, so the stall path never fired, and Jev's `p_done` stayed below
+  `jev_done_threshold` for the whole run because it sees file names, check results and
+  notes rather than the work. Runs 20260925-200554, 20260925-232600 and 20260926-024217
+  all ended by `max_turns` or `escalate` without one review, each on a tree an independent
+  reviewer then approved. Two paths now lead to the same `review_now` question: after a
+  recorded review has had `review_turns` (default 3) executor turns (`reviewed_before`,
+  `why: "revisit"`), and after `review_turns` green turns with no review yet
+  (`unreviewed`, `why: "unreviewed"`). Jev still decides, and the review still decides
+  whether the goal is met. Turn notes reach Jev at 600 characters and review findings at
+  500, so the evidence that a finding was addressed survives. New tests in
+  `tests/test_jev_mcp.py`.
+
 ## [2026.09.24.2104] - 2026-09-24
 
 ### Changed

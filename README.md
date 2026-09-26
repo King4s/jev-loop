@@ -71,7 +71,11 @@ If the loop stalls - same role, all checks green and unchanged output for `stall
 turns in a row - Jev is told so (`stalled`) and asked an extra question: can more executor
 work change anything, or should an independent reviewer judge now? If Jev says yes
 (≥ `jev_review_threshold`), the loop goes to review even though `p_done` is below the
-threshold. The code decides nothing; the review still decides whether the goal is met.
+threshold. The same question is asked after `review_turns` green executor turns since the
+last review, or since the start when no reviewer has looked yet (`reviewed_before` /
+`unreviewed`): a run that keeps doing real work never stalls, and Jev's `p_done` - it sees
+file names, check results and notes, not the work - can stay below the threshold for a
+whole run. The code decides nothing; the review still decides whether the goal is met.
 Everything is logged in `runs/<id>.jsonl` (the decision tape, including Jev's raw answers),
 and the state in `runs/<id>.state.json`, so a run can be resumed.
 
@@ -94,6 +98,7 @@ The skill writes it for you, but the format is simple (see [goal.example.json](g
 | `jev_done_threshold` | When Jev may send the run to review (default 0.8) |
 | `stall_turns` | Unchanged green turns with the same role before Jev is asked about review (default 2) |
 | `jev_review_threshold` | When Jev's answer to that question sends the run to review (default 0.5) |
+| `review_turns` | Green executor turns since the last review, or since the start, before Jev is asked about review (default 3) |
 | `max_turns`, `max_consecutive_failures`, `check_timeout` | Hard limits |
 
 ## MCP tools

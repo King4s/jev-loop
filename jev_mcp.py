@@ -96,6 +96,12 @@ def turn_failed(prev, checks, executor_ok, files):
     return not moved and not files
 
 
+# How much of a turn note and of each review finding reaches Jev. Jev is weak on
+# distractors, so the state stays short - but long enough to carry the evidence that
+# a review item was addressed, which is what decides whether a round is over.
+NOTE_CHARS = 600
+MISSING_CHARS = 500
+
 _VOLATILE = re.compile(r"\d+(?:\.\d+)?\s*(?:ms|s|sec|secs|seconds)\b|\d{1,2}:\d{2}(?::\d{2})?")
 
 
@@ -244,12 +250,38 @@ class Run:
         # nothing in the checks changing. Jev decides what that means (review_now below).
         idle = s.get("idle", 0)
         stalled = s["checks_ok"] and idle >= cfg.get("stall_turns", 2)
+        # A second fact of the same kind: the executor has taken `review_turns` turns since
+        # the last review - or since the start, if no reviewer has looked yet - and every
+        # check passes. A reviewer is the only one who can say whether the goal is met, and
+        # without offering it the run can only be reviewed by `p_done` clearing its threshold
+        # or by a stall. Neither happens in a run whose executor keeps doing real work: every
+        # turn changes the check output, so it never stalls, and Jev's `p_done` sits below
+        # the threshold because it sees file names and notes, not the work (runs
+        # 20260925-200554, 20260925-232600 and 20260926-024217 all ended by max_turns or
+        # escalate without one review). Jev still decides (review_now below).
+        reviewed_at = s["review"]["at_history"] if s["review"] else 0
+        since_review = len(s["history"]) - reviewed_at
+        revisit = (not stalled and s["checks_ok"] and since_review >= cfg.get("review_turns", 3))
         if stalled:
             state["stalled"] = {"turns_without_change": idle, "role": s["last_role"],
                                 "note": "All checks passed on each of these turns and their "
                                         "output did not change. Jev only sees file names, check "
                                         "results and turn notes; the independent reviewer reads "
                                         "the actual work and is the only one who can end the run."}
+        elif revisit and s["review"]:
+            state["reviewed_before"] = {
+                "turns_since_review": since_review,
+                "note": "The reviewer has judged this run before and found items missing (see "
+                        "`last_review`). The executor has taken the turns in "
+                        "`last_review.turns_since_review` since. An independent reviewer is the "
+                        "only one who can say whether those items are closed."}
+        elif revisit:
+            state["unreviewed"] = {
+                "green_turns": since_review,
+                "note": "No reviewer has looked at this run yet. The executor has taken "
+                        f"{since_review} turns and every check passes. Jev only sees file names, "
+                        "check results and turn notes; the independent reviewer reads the actual "
+                        "work and is the only one who can end the run."}
         qs = {
             "route": {"type": "choice",
                       "instructions": "Which agent should take the next turn toward the `goal`?",
@@ -260,12 +292,14 @@ class Run:
                                      "every item in `last_review.missing` addressed by the turns in "
                                      "`last_review.turns_since_review`?"},
         }
-        if stalled:
+        if stalled or revisit:
             qs["review_now"] = {"type": "noul",
-                                "instructions": "See `stalled`: the last turns changed nothing. Is more "
-                                                "executor work unlikely to change anything, so that an "
-                                                "independent reviewer should judge the `goal` and "
-                                                "`acceptance` now?"}
+                                "instructions": "See `stalled`, `reviewed_before` or `unreviewed`: the "
+                                                "last turns changed nothing, or a previous review found "
+                                                "items missing and the executor has worked on them since, "
+                                                "or the executor has worked for several green turns and no "
+                                                "reviewer has looked yet. Should an independent reviewer "
+                                                "judge the `goal` and `acceptance` now?"}
         if s["fails"]:
             qs["recovery"] = {"type": "choice",
                               "instructions": "The last turn failed (see `recent_turns` and `checks`). "
@@ -281,7 +315,7 @@ class Run:
         role, p_done = route["choice"], float(a["done"]["noul"])
         decision = {"turn": s["turn"], "route": role, "route_conf": route.get("confidence"),
                     "p_done": round(p_done, 3), "model": raw.get("model")}
-        p_review = float(a["review_now"]["noul"]) if stalled and "review_now" in a else None
+        p_review = float(a["review_now"]["noul"]) if (stalled or revisit) and "review_now" in a else None
         if p_review is not None:
             decision["stalled"] = idle
             decision["p_review_now"] = round(p_review, 3)
@@ -310,7 +344,8 @@ class Run:
         # Jev sends the run to review when it thinks the goal is met, or when it judges
         # that a stalled executor cannot change anything and the reviewer should look.
         why = ("done" if p_done >= cfg["jev_done_threshold"] else
-               "stalled" if p_review is not None and p_review >= cfg.get("jev_review_threshold", 0.5) else None)
+               (("revisit" if s["review"] else "unreviewed") if revisit else "stalled")
+               if p_review is not None and p_review >= cfg.get("jev_review_threshold", 0.5) else None)
         if s["checks_ok"] and why:
             s["pending_role"] = role
             s["phase"] = "review"
@@ -326,7 +361,8 @@ class Run:
         self.s["idle"] = 0  # the reviewer has looked; a new stall has to build up again
         if done:
             return self._stop("goal_met", executor_turns=len(self.s["history"]))
-        self.s["review"] = {"missing": [str(m)[:300] for m in missing][:10] or ["reviewer said not done (no details)"],
+        self.s["review"] = {"missing": [str(m)[:MISSING_CHARS] for m in missing][:10]
+                                       or ["reviewer said not done (no details)"],
                             "at_history": len(self.s["history"])}
         return self._execute(self.s["pending_role"])
 
@@ -345,10 +381,11 @@ class Run:
         s["checks"], s["checks_ok"] = checks, checks_ok
         s["fails"] = s["fails"] + 1 if failed else 0
         s["last_role"], s["pending_role"], s["phase"] = role, None, "decide"
-        h = {"turn": s["turn"], "role": role, "files": files, "notes": notes[:300], "checks_ok": checks_ok,
+        h = {"turn": s["turn"], "role": role, "files": files, "notes": notes[:NOTE_CHARS], "checks_ok": checks_ok,
              "failed": failed}
         s["history"].append(h)
-        self.log("turn", **h)
+        # The state keeps the bounded view Jev sees; the tape keeps the note whole.
+        self.log("turn", **{**h, "notes": notes})
         self.save()
         return {"turn": s["turn"], "checks_ok": checks_ok, "turn_failed": failed, "consecutive_fails": s["fails"],
                 "checks": [{"cmd": c["cmd"], "ok": c["ok"], "out": c["out"][-1200:]} for c in checks],

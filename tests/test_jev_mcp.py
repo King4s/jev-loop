@@ -234,7 +234,7 @@ def test_stall_needs_same_role_and_unchanged_checks(goal, monkeypatch):
     monkeypatch.setattr(m, "jev", fake_jev(p_done=0.5, seen=seen))
     turn(run.id)
     m.Run(run.id).decide()
-    assert "review_now" not in seen[-1][1]
+    assert "stalled" not in seen[-1][0], "a role switch is not a stall"
     assert m.Run(run.id).s["idle"] == 0
 
     red = {"cmd": "c", "ok": True, "out": "5 passed in 0.31s"}
@@ -279,3 +279,88 @@ def test_api_key_env_then_file(tmp_path, monkeypatch):
         m.api_key()
     kf.write_text("from-file\n")
     assert m.api_key() == "from-file"
+
+def test_a_review_round_can_be_revisited(goal, monkeypatch):
+    """A review round has to be reachable again without a stall.
+
+    The executor alternates roles while working through what a reviewer found
+    missing, so the same-role stall never fires; without a second path the run can
+    never be reviewed again, however much it fixed.
+    """
+    run = m.Run.create(goal)
+    Path(run.cfg["workdir"], "ok.txt").write_text("x", encoding="utf-8")
+    roles = ["build", "fix", "build", "fix", "build"]
+
+    def jev(model, state, qs):
+        # A high p_done sends the run to its first review. Once a verdict is recorded the
+        # run is known to be unfinished, so after that only the fact that the round has
+        # had executor turns since can take it back there.
+        done = 0.9 if state["last_review"] is None and state["all_checks_pass"] else 0.1
+        route = roles.pop(0) if roles else "build"
+        return fake_jev(route=route, p_done=done, review_now=0.9)(model, state, qs)
+
+    monkeypatch.setattr(m, "jev", jev)
+
+    assert m.Run(run.id).decide()["next"] == "execute"
+    m.Run(run.id).record_turn("made it", ["ok.txt"], True)  # checks turn green
+    assert m.Run(run.id).decide()["next"] == "review"
+    assert m.Run(run.id).record_review(False, ["handle a missing cover"])["next"] == "execute"
+
+    for n in range(3):  # three turns on the finding, alternating roles
+        m.Run(run.id).record_turn(f"worked on it {n}", [], True)
+        assert m.Run(run.id).s["idle"] == 0, "this must be the reviewed-before path, not a stall"
+        if n < 2:
+            assert m.Run(run.id).decide()["next"] == "execute"
+
+    # Jev is asked the reviewer question again and sends the run back to review.
+    assert m.Run(run.id).decide()["next"] == "review"
+
+
+def test_an_unreviewed_run_of_green_turns_is_offered_to_the_reviewer(goal, monkeypatch):
+    """Real work never stalls (each turn changes the check output) and Jev's p_done can sit
+    below the threshold for the whole run, so without this path a run that keeps building
+    is never reviewed - it ends by max_turns or escalate (runs 20260925-200554,
+    20260925-232600, 20260926-024217). After `review_turns` green turns with no review yet,
+    Jev is told `unreviewed` and asked `review_now`; it still decides."""
+    run = m.Run.create(goal)
+    Path(run.cfg["workdir"], "ok.txt").write_text("x", encoding="utf-8")
+    roles = ["build", "fix", "build", "fix"]
+    seen = []
+
+    def jev(model, state, qs):
+        route = roles.pop(0) if roles else "build"
+        # p_done never reaches jev_done_threshold; review_now says yes when asked.
+        return fake_jev(route=route, p_done=0.6, review_now=0.9, seen=seen)(model, state, qs)
+
+    monkeypatch.setattr(m, "jev", jev)
+    for n in range(3):
+        assert m.Run(run.id).decide()["next"] == "execute"
+        assert "review_now" not in seen[-1][1] and "unreviewed" not in seen[-1][0]
+        m.Run(run.id).record_turn(f"real work {n}", [f"f{n}.txt"], True)
+        assert m.Run(run.id).s["idle"] == 0, "roles alternate, so this is not a stall"
+
+    d = m.Run(run.id).decide()
+    state, qs = seen[-1]
+    assert state["unreviewed"]["green_turns"] == 3 and state["last_review"] is None
+    assert "review_now" in qs and "reviewed_before" not in state
+    assert (d["next"], d["why"]) == ("review", "unreviewed")
+
+    # A rejected review switches the run to the reviewed-before path, not back to unreviewed.
+    assert m.Run(run.id).record_review(False, ["one more thing"])["next"] == "execute"
+    for n in range(3):
+        m.Run(run.id).record_turn(f"on the finding {n}", [], True)
+        if n < 2:
+            assert m.Run(run.id).decide()["next"] == "execute"
+    d = m.Run(run.id).decide()
+    assert "reviewed_before" in seen[-1][0] and "unreviewed" not in seen[-1][0]
+    assert (d["next"], d["why"]) == ("review", "revisit")
+
+
+def test_unreviewed_path_still_leaves_the_decision_to_jev(goal, monkeypatch):
+    run = m.Run.create(goal)
+    Path(run.cfg["workdir"], "ok.txt").write_text("x", encoding="utf-8")
+    monkeypatch.setattr(m, "jev", fake_jev(route="build", p_done=0.6, review_now=0.2))
+    for n in range(4):
+        d = m.Run(run.id).decide()
+        assert d["next"] == "execute", "review_now below jev_review_threshold keeps executing"
+        m.Run(run.id).record_turn(f"work {n}", [f"g{n}.txt"], True)

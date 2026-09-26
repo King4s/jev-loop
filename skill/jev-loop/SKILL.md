@@ -101,6 +101,28 @@ in Claude Code and Codex they come from the `jev-loop` MCP server as `loop_start
      where the result is, and how to run it. On `escalate`, summarise what keeps failing.
 3. Repeat until `stop`. One short line to the user per turn (turn, role, checks ok/fail).
 
+### When the run keeps answering `execute`
+
+The server decides; you never route yourself. But the server's two facts about a
+reviewer are worth knowing, because a run can sit in `execute` with nothing left to do:
+
+- After `loop_record_review(done=false)` the server hands out the queued role's turn.
+  Record it with `loop_record_turn` **before** the next `loop_decide`, or that call fails
+  with `wrong step: run is in phase 'execute'`.
+- A reviewer is offered when Jev thinks the goal is met, when the same role keeps running
+  with unchanged green checks (`stall_turns`), or when `review_turns` (default 3) green
+  executor turns have passed since the last review - or since the start, if no reviewer
+  has looked yet. A run whose executor keeps doing real work never stalls (every turn
+  changes the check output) and Jev's `p_done` can sit below the threshold for the whole
+  run, so the third path is what gets such a run in front of a reviewer at all; Jev still
+  answers `review_now` and decides.
+- If `loop_decide` keeps returning `execute` with nothing left to do, record an audit turn
+  (`files: []`) whose note says plainly what is finished and that only the verdict remains.
+  That is evidence Jev can act on; process narration is not.
+- Keep `notes` short and lead with the change and its evidence, not the story: Jev sees
+  only the first `NOTE_CHARS` (600) characters of each note, and the state is built to
+  keep him away from everything else.
+
 If a tool returns `{"error": ...}`, fix the cause and retry that call; never bypass the
 server. If the `jev-loop` tools are missing, tell the user to restart the harness so it
 picks up the new MCP server (setup below).
