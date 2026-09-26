@@ -5,6 +5,8 @@ New releases are made with `.\release.ps1`.
 
 ## [Unreleased]
 
+## [2026.09.26.0313] - 2026-09-26
+
 ### Added
 - `install.ps1` sets up Hermes on Windows the way `install.sh` already did: syncs the skill to
   `~/.hermes/skills/jev-loop/` and registers the MCP server, passing `TYPESAFE_API_KEY`
