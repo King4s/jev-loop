@@ -122,6 +122,12 @@ reviewer are worth knowing, because a run can sit in `execute` with nothing left
 - Keep `notes` short and lead with the change and its evidence, not the story: Jev sees
   only the first `NOTE_CHARS` (600) characters of each note, and the state is built to
   keep him away from everything else.
+- When a subagent builds a copy of this repo, give it a **fresh** target directory - and
+  remember the copy's own `.cargo/config.toml` counts too. This project's config names a
+  shared `target-dir`, so any `cargo` call that does not set `CARGO_TARGET_DIR` writes
+  there. A copy of older source writing shared artifacts is how a workspace test came to
+  fail against a guard that existed, while `-p opticore --test` - a different unit -
+  passed, which reads exactly like a flaky test and is not.
 
 If a tool returns `{"error": ...}`, fix the cause and retry that call; never bypass the
 server. If the `jev-loop` tools are missing, tell the user to restart the harness so it
